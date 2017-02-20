@@ -1,0 +1,150 @@
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Control:ON
+Conf is changed by python
+Conf is changed by python
+Control:OFF
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Conf is changed by python
+Keyboard Interrupt
+Keyboard Interrupt
+Keyboard Interrupt
+Error: am2320(1) 
+Error: am2320(2) 
+--- Alarm! ---
+Conf is changed by python
+--- Alarm! ---
+Conf is changed by python
+--- Alarm! ---
+Conf is changed by python
+--- Alarm! ---
+Conf is changed by python
+Control:OFF
+--- Alarm! ---
+Control:OFF
+Conf is changed by python
+--- Alarm! ---
+Control:OFF
+Conf is changed by python
+Keyboard Interrupt
+--- Alarm! ---
+Control:OFF
+Conf is changed by python
+Keyboard Interrupt
+['ALARM', 'ON', '02:05']
+['CTRL', 'ON', '20']
+['DISP', 'ON', 'CTRL']
+Error: am2320(1) 
+Control:ON
+Control:OFF
+Conf is updated by CGI, reading...
+['ALARM', 'ON', '02:06']
+['CTRL', 'ON', '20']
+['DISP', 'ON', 'ALARM']
+Conf is updated by CGI, reading...
+['ALARM', 'ON', '02:07']
+['CTRL', 'ON', '20']
+['DISP', 'ON', 'ALARM']
+--- Alarm! ---
+Control:OFF
+Error: am2320(2) 
+Control:ON
+Control:OFF
+Keyboard Interrupt
+['ALARM', 'ON', '02:07']
+['CTRL', 'ON', '20']
+['DISP', 'ON', 'ALARM']
+Conf is updated by CGI, reading...
+['ALARM', 'ON', '02:07']
+['CTRL', 'ON', '20']
+['DISP', 'ON', 'ALARM']
+Conf is updated by CGI, reading...
+['ALARM', 'ON', '12:00']
+['CTRL', 'ON', '20']
+['DISP', 'ON', 'ALARM']
+Conf is updated by CGI, reading...
+['ALARM', 'OFF', '12:00']
+['CTRL', 'ON', '20']
+['DISP', 'ON', 'ALARM']
+Keyboard Interrupt

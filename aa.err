@@ -1,0 +1,72 @@
+check error stream
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+Traceback (most recent call last):
+  File "/home/naoya/airalarm/airalarm.py", line 354, in <module>
+    main_loop()
+  File "/home/naoya/airalarm/airalarm.py", line 287, in main_loop
+    display_lcd(mode)
+  File "/home/naoya/airalarm/airalarm.py", line 63, in display_lcd
+    lcd.display_messages([str1, str2])
+  File "/home/naoya/airalarm/raspi_lcd.py", line 76, in display_messages
+    self.display_one_line(message)
+  File "/home/naoya/airalarm/raspi_lcd.py", line 65, in display_one_line
+    char_code_list = self.convert_message(message)
+  File "/home/naoya/airalarm/raspi_lcd.py", line 59, in convert_message
+    raise ValueError('Exceeds maximum length of characters for each line: 16')
+ValueError: Exceeds maximum length of characters for each line: 16
+check error stream
+check error stream
+check error stream
+check error stream
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+Traceback (most recent call last):
+  File "/home/naoya/airalarm/airalarm.py", line 360, in <module>
+    lcd.display_messages(["Goodbye!", ""])
+  File "/home/naoya/airalarm/raspi_lcd.py", line 71, in display_messages
+    self.send_returnhome()
+  File "/home/naoya/airalarm/raspi_lcd.py", line 44, in send_returnhome
+    self.send_command(code, is_data=False)
+  File "/home/naoya/airalarm/raspi_lcd.py", line 31, in send_command
+    self.bus.write_i2c_block_data(LCD_ADDR, COMMAND_ADDR, [command])
+IOError: [Errno 5] Input/output error
+check error stream
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+check error stream
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+Check error stream...
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+/bin/sh: 1: ir/sendir: not found
+Check error stream...
+Check error stream...
