@@ -40,7 +40,7 @@ class AirAlarmConf:
         self.dispOn = False # Backlight
         self.dispMode = "ALARM"
         #
-        self.aircon_on = False  # True if aircon turns on
+        self.turnedOn = False  # True if aircon is turned on
         self.readConf()
 
     # Executed in initailization of airalrm.py and in CGI script
@@ -73,8 +73,7 @@ class AirAlarmConf:
             os.remove(CGI_UPDATE)  # clear flag
 
     # Write configuration file
-    # This method should be called in CGI
-    def writeConf(self):
+    def writeConf(self, calledCGI=True):
         b2onoff = lambda b: "ON" if b else "OFF"
         try:
             with open(CONF_FILE, 'w') as csvf:
@@ -87,9 +86,11 @@ class AirAlarmConf:
                 csvf.write(body)
         except:
             print "Write Error: " + CONF_FILE
-        try:
-            with open(CGI_UPDATE, 'w') as wf:
-                if ADEBUG: print "CGI_UPDATE is created by CGI"
-        except:
-            print "Permission Error: " + CGI_UPDATE
+        # ------------ create CGI_UPDATE if called by CGI -------------
+        if calledCGI:
+            try:
+                with open(CGI_UPDATE, 'w') as wf:
+                    if ADEBUG: print "CGI_UPDATE is created by CGI"
+            except:
+                print "Permission Error: " + CGI_UPDATE
 #================== EOF =========================

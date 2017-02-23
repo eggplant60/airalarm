@@ -71,7 +71,7 @@ def taskAlarm():
         if d.hour == conf.alarmTime.hour \
                 and d.minute == conf.alarmTime.minute:
             conf.alarmOn = False # Turn off
-            conf.isupdated = True
+            conf.writeConf(calledCGI=False)
             # if thermo.getTmp() < conf.onTmpMin:
             aircon_on()
             print "--- Alarm! ---"
@@ -84,13 +84,15 @@ def taskAlarm():
 def taskCtrl():
     if conf.ctrlOn:
         if thermo.getTmp() < conf.ctrlTemp-DELTA_TMP:
-            if not(conf.aircon_on):
+            if not(conf.turnedOn):
                 print "Control:ON"
                 aircon_on()
+                conf.turnedOn = True
         elif thermo.getTmp() > conf.ctrlTemp+DELTA_TMP:
-            if conf.aircon_on:
+            if conf.turnedOn:
                 print "Control:OFF"
                 aircon_off()
+                conf.turnedOn = False
 
 
 #=========================================
@@ -101,7 +103,7 @@ def aircon_on():
     subprocess.call(ON_CMD,shell=True)
     time.sleep(0.5)
     subprocess.call(ON_CMD,shell=True)
-    conf.aircon_on = True
+    conf.turnedOn = True
 
 
 #=========================================
@@ -112,7 +114,7 @@ def aircon_off():
     subprocess.call(OFF_CMD,shell=True)
     time.sleep(0.5)
     subprocess.call(OFF_CMD,shell=True)
-    conf.aircon_on = False
+    conf.turnedOn = False
 
 
 #=========================================
