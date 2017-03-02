@@ -7,6 +7,7 @@ import sys
 import time
 import smbus
 import unicodedata
+import datetime
 
 from character_table import INITIALIZE_CODES, LINEBREAK_CODE, RETURNHOME_CODE, CHAR_TABLE
 
@@ -18,6 +19,14 @@ LCD_ADDR = 0x50   # LCD Address (Default: 0x50)
 SLEEP_TIME = 0.01 # Sleep time after initializing display(sec)
 DELAY_TIME1 = 0.001 # Delay time between characters(sec)
 DELAY_TIME2 = 0.005 # Delay time after return home(sec)
+
+#=========================================
+# print messages with time
+#=========================================
+#def printDateMsg(msg):
+#    d = datetime.datetime.today()
+#    print d.strftime('%Y/%m/%d %H:%M:%S') + ' [LCDC] ' + msg
+
 
 class LCDController:
     def __init__(self):
@@ -53,9 +62,11 @@ class LCDController:
         for char in message:
             if char not in CHAR_TABLE:
                 error_message = 'undefined character: %s' % (char.encode('utf-8'))
+                #printDateMsg(error_message)
                 raise ValueError(error_message)
             char_code_list += CHAR_TABLE[char]
         if len(char_code_list) > 16:
+            #printDateMsg('Exceeds maximum length of characters for each line: 16')
             raise ValueError('Exceeds maximum length of characters for each line: 16')
         return char_code_list
 

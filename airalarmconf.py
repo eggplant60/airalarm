@@ -13,6 +13,13 @@ CONF_FILE = '/etc/airalarm.conf'     # general configuration file
 CGI_UPDATE = '/tmp/cgi_update.tmp'   # temporary file created after update of conf
 
 #=========================================
+# print messages with time
+#=========================================
+def printDateMsg(msg):
+    d = datetime.datetime.today()
+    print d.strftime('%Y/%m/%d %H:%M:%S') + ' [CONF] ' + msg
+
+#=========================================
 # Class of (single) configuration parameter
 #=========================================
 # class ConfItem:
@@ -51,7 +58,9 @@ class AirAlarmConf:
                 for line in csvf.readlines():
                     tmp = line.rstrip('\n')     # get rid of return code
                     str_list = tmp.split(',')   # Convert CSV form into list
-                    if ADEBUG: print str_list
+                    if ADEBUG:
+                        #printDateMsg("csv data is")
+                        print str_list
 
                     if str_list[0] == "ALARM":
                         self.alarmOn = onoff2b(str_list[1])
@@ -63,12 +72,12 @@ class AirAlarmConf:
                         self.dispOn = onoff2b(str_list[1])
                         self.dispMode = str_list[2]
         except:
-            print "Read Error: " + CONF_FILE
+            printDateMsg("Read Error: " + CONF_FILE)
 
     # check temporary file created by CGI and read conf
     def checkReadConf(self):
         if os.path.exists(CGI_UPDATE):
-            if ADEBUG: print "Conf is updated by CGI, reading..."
+            if ADEBUG: printDateMsg("Conf is updated by CGI, reading...")
             self.readConf()
             os.remove(CGI_UPDATE)  # clear flag
 
@@ -85,12 +94,12 @@ class AirAlarmConf:
                     + str(self.dispMode)
                 csvf.write(body)
         except:
-            print "Write Error: " + CONF_FILE
+            printDateMsg("Write Error: " + CONF_FILE)
         # ------------ create CGI_UPDATE if called by CGI -------------
         if calledCGI:
             try:
                 with open(CGI_UPDATE, 'w') as wf:
-                    if ADEBUG: print "CGI_UPDATE is created by CGI"
+                    if ADEBUG: printDateMsg("CGI_UPDATE is created by CGI")
             except:
-                print "Permission Error: " + CGI_UPDATE
+                printDateMsg("Permission Error: " + CGI_UPDATE)
 #================== EOF =========================

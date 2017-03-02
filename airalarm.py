@@ -26,6 +26,20 @@ OFF_CMD = 'cd /home/naoya/airalarm/ir; ./sendir poff.data 3 24 > /dev/null'
 WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 #=========================================
+# print messages with time
+#=========================================
+def printDateMsg(msg):
+    d = datetime.datetime.today()
+    print d.strftime('%Y/%m/%d %H:%M:%S') + ' [MAIN] ' + msg
+
+#=========================================
+# print error with time
+#=========================================
+def printDateErr(msg):
+    d = datetime.datetime.today()
+    sys.stderr.write(d.strftime('%Y/%m/%d %H:%M:%S') + ' [MAIN] ' + msg + '\n')
+
+#=========================================
 # Display information on LCD (and control backlignt)
 #=========================================
 def taskDisp():
@@ -74,7 +88,7 @@ def taskAlarm():
             conf.writeConf(calledCGI=False)
             # if thermo.getTmp() < conf.onTmpMin:
             aircon_on()
-            print "--- Alarm! ---"
+            printDateMsg("--- Alarm! ---")
 
 
 #=========================================
@@ -85,12 +99,12 @@ def taskCtrl():
     if conf.ctrlOn:
         if thermo.getTmp() < conf.ctrlTemp-DELTA_TMP:
             if not(conf.turnedOn):
-                print "Control:ON"
+                printDateMsg("Control:ON")
                 aircon_on()
                 conf.turnedOn = True
         elif thermo.getTmp() > conf.ctrlTemp+DELTA_TMP:
             if conf.turnedOn:
-                print "Control:OFF"
+                printDateMsg("Control:OFF")
                 aircon_off()
                 conf.turnedOn = False
 
@@ -123,9 +137,9 @@ def aircon_off():
 def main_loop():
 
     while True:
-        taskDisp()  # Display on LCD
         taskAlarm() # Alarm at alarmTime
         taskCtrl()  # Temparature Control
+        taskDisp()  # Display on LCD
         conf.checkReadConf() # check if conf is updated by CGI
         time.sleep(LOOP_DELAY)
 
@@ -148,12 +162,14 @@ if __name__ == '__main__':
     thermo = ht.Thermo()
     thermo.start()
 
-    if DEBUG: sys.stderr.write('Check error stream...\n')
+    if DEBUG:
+        printDateMsg("Checking stdout...")
+        printDateErr("Checking stderr...")
 
     try:
         main_loop()
     except KeyboardInterrupt:
-        if DEBUG: print "Keyboard Interrupt"
+        if DEBUG: printDateMsg("Keyboard Interrupt")
     finally:
         #conf.writeConf()    # save configuration
         thermo.stop()

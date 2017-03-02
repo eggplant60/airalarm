@@ -3,6 +3,7 @@
 
 import smbus
 import time
+import datetime
 import threading
 #import raspi_lcd as i2clcd
 
@@ -10,6 +11,11 @@ address = 0x5c  # 1011100(7bit,0x5c) + 0(1bit,R/W bit) = 0xb8
 #ARRAY_SIZE = 1
 READ_INT = 5 # [sec], # each reading interval is to be grater than 2 sec
 DEBUG_MODE = True
+
+# 日時付きでメッセージ表示
+def printDateMsg(msg):
+    d = datetime.datetime.today()
+    print  d.strftime('%Y/%m/%d %H:%M:%S') + ' [TRMO] ' + msg
 
 # am2320 のクラス
 class Thermo(threading.Thread):
@@ -40,7 +46,7 @@ class Thermo(threading.Thread):
             try:    # 読み取り命令
                 self.__i2c.write_i2c_block_data(address,0x03,[0x00,0x04])
             except:
-                if DEBUG_MODE: print "Error: am2320(1) "
+                if DEBUG_MODE: printDateMsg("[Error] am2320(1) ")
                 #self.com_i2c = False	# 通信終了
                 self.__hum = 0.0		# 読み取り失敗時は0.0
                 self.__tmp = 0.0
@@ -51,14 +57,13 @@ class Thermo(threading.Thread):
             try:    # データ受取
                 block = self.__i2c.read_i2c_block_data(address,0,6)
             except:
-                if DEBUG_MODE: print "Error: am2320(2) "
+                if DEBUG_MODE: printDateMsg("[Error] am2320(2) ")
                 #self.com_i2c = False   # 通信終了
                 self.__hum = 0.0        # 読み取り失敗時は0.0
                 self.__tmp = 0.0
                 self.__is_available = False
                 return
             time.sleep(0.001)
-            self.__is_available = False
 
             #if DEBUG_MODE: print "OK:   am2320"
             #self.com_i2c = False	# 通信終了
@@ -72,6 +77,7 @@ class Thermo(threading.Thread):
             #self.__tmp = sum(self.__arrayTmp)/ARRAY_SIZE
             self.__hum = (block[2] << 8 | block[3])/10.0
             self.__tmp = (block[4] << 8 | block[5])/10.0
+            self.__is_available = False
 
     def getHum(self):
         self.__updateValue()
