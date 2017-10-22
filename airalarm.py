@@ -37,7 +37,8 @@ def printDateMsg(msg):
 #=========================================
 def printDateErr(msg):
     d = datetime.datetime.today()
-    sys.stderr.write(d.strftime('%Y/%m/%d %H:%M:%S') + ' [MAIN] ' + msg + '\n')
+    sys.stderr.write(d.strftime('%Y/%m/%d %H:%M:%S') \
+                     + ' [MAIN] ' + msg + '\n')
 
 #=========================================
 # Display information on LCD (and control backlignt)
