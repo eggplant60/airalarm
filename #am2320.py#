@@ -9,7 +9,7 @@ import threading
 
 address = 0x5c # 1011100(7bit,0x5c) + 0(1bit,R/W bit) = 0xb8
 READ_INT = 5   # [sec], each reading interval is to be grater than 2 sec
-LOG_INT = 600  # [sec]
+LOG_INT = 10  # [sec]
 DEBUG_MODE = True
 
 # 日時付きでメッセージ表示
@@ -27,7 +27,7 @@ class Thermo(threading.Thread):
         self.__tmp = 0.0
         self.__stop_flag = False
         self.__is_available = False
-        self.t = threading.Thread(target=self.logValue)
+        self.t = threading.Thread(target=self.logTimer)
         self.t.setDaemon(True)
         self.t.start()
 
@@ -81,14 +81,17 @@ class Thermo(threading.Thread):
     def displayValue(self):
         print self.stringValue()
 
-    def logValue(self):
+    def logTimer(self):
         while True:
-            printDateMsg(self.stringValue())
+            self.__logFlag = True
             time.sleep(LOG_INT)
 
     def run(self):
         while not self.__stop_flag:
             self.__is_available = True
+            if self.__logFlag:
+                printDateMsg(self.stringValue())
+                self.__logFlag = False
             time.sleep(READ_INT)
 
     def stop(self):

@@ -17,7 +17,7 @@ DEBUG = True
 STU_PRT = False
 LOOP_DELAY = 0.1
 DELTA_TMP = 0.5
-#
+
 ON_CMD = 'cd /home/naoya/airalarm/ir; ./sendir pon.data 3 24 > /dev/null'
 OFF_CMD = 'cd /home/naoya/airalarm/ir; ./sendir poff.data 3 24 > /dev/null'
 #UP_CMD = 'ir/sendir ir/tup.data 3 24'
@@ -45,11 +45,11 @@ def printDateErr(msg):
 #=========================================
 def taskDisp():
     d = datetime.datetime.today()
+    # Get humidity, tempareture
+    hum_str = str(thermo.getHum())[0:4]
+    tmp_str = str(thermo.getTmp())[0:4]
 
     if conf.dispMode == "CTRL":
-        # Get humidity, tempareture
-        hum_str = str(thermo.getHum())[0:4]
-        tmp_str = str(thermo.getTmp())[0:4]
         # Generate strings for LCD
         str1 = '%02d/%02d %02d:%02d:%02d' \
                 %(d.month, d.day, d.hour, d.minute, d.second)
@@ -63,10 +63,15 @@ def taskDisp():
 
     elif conf.dispMode == "ALARM":
         # Generate strings for LCD
-        str1 = '%4d/%02d/%02d (%s)' \
-                %(d.year, d.month, d.day, WEEK[d.weekday()])
-        str2 = '%02d:%02d:%02d  %02d:%02d' \
-                %(d.hour, d.minute, d.second, \
+        # str1 = '%4d/%02d/%02d (%s)' \
+        #         %(d.year, d.month, d.day, WEEK[d.weekday()])
+        # str2 = '%02d:%02d:%02d  %02d:%02d' \
+        #         %(d.hour, d.minute, d.second, \
+        #         conf.alarmTime.hour, conf.alarmTime.minute)
+        str1 = '%02d/%02d %02d:%02d:%02d' \
+                %(d.month, d.day, d.hour, d.minute, d.second)
+        str2 = '%s %s %02d:%02d' \
+                %(hum_str, tmp_str, \
                 conf.alarmTime.hour, conf.alarmTime.minute)
         if conf.alarmOn == True:
             str2 += '*'
