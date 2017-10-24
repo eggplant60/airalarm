@@ -46,11 +46,6 @@ print """
     
     <form name="form1" method="POST" action="/cgi-bin/submit.cgi">
 
-      <div>
-        <input type="submit" value="セット">
-      </div>
-      <Hr Width="100%">
-      <!-- ------------------------------------------ -->
 
       <div>
 	<p>アラーム機能:
@@ -96,6 +91,13 @@ print """
       </div>
       <Hr Width="100%">
       <!-- ------------------------------------------ -->
+
+      <div>
+        <input type="submit" value="セット">
+      </div>
+      <Hr Width="100%">
+      <!-- ------------------------------------------ -->
+
     </form>
     
   </body>

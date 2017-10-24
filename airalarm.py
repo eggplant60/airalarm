@@ -166,7 +166,7 @@ if __name__ == '__main__':
     time.sleep(1)
     # Thermometer
     thermo = ht.Thermo()
-    thermo.start()
+    #thermo.start()
 
     if DEBUG:
         printDateMsg("Checking stdout...")
@@ -178,7 +178,7 @@ if __name__ == '__main__':
         if DEBUG: printDateMsg("Keyboard Interrupt")
     finally:
         #conf.writeConf()    # save configuration
-        thermo.stop()
+        #thermo.stop()
         lcd.display_messages(["Goodbye!", ""])
         GPIO.cleanup()
 # ================== EOF ==========================
