@@ -13,7 +13,7 @@ import RPi.GPIO as GPIO
 import airalarmconf as aac
 
 # Global variables
-DEBUG = True
+DEBUG = False
 STU_PRT = False
 LOOP_DELAY = 0.1
 DELTA_TMP = 0.5
@@ -158,15 +158,14 @@ if __name__ == '__main__':
     # Initialization
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)      # Use BCM GPIO numbers
-    conf = aac.AirAlarmConf()   # to handle configuration file
+    conf = aac.AirAlarmConf()   # Handler of a configuration file
+    # Thermometer
+    thermo = ht.Thermo()
     # LCD
     lcd = i2clcd.LCDController()
     lcd.initialize_display()
     lcd.display_messages(["RasbperryPi Zero", "Air Alarm"])
     time.sleep(1)
-    # Thermometer
-    thermo = ht.Thermo()
-    #thermo.start()
 
     if DEBUG:
         printDateMsg("Checking stdout...")
