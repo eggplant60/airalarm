@@ -70,8 +70,8 @@ class Thermo():
 
     def __logValue(self):
         while True:
-            printDateMsg(self.stringValue())
             time.sleep(LOG_INT)
+            printDateMsg(self.stringValue())
 
 
     def getHum(self):

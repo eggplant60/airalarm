@@ -5,7 +5,7 @@ import cgi
 import cgitb
 import sys
 sys.path.append('/home/naoya/airalarm')
-import airalarmconf
+import aaconf
 import datetime
 
 cgitb.enable() # dislpy error on browser
@@ -67,7 +67,7 @@ print """
 
 ### send Post Data to main.py via plain text
 print "<!-" # comment out
-obj = airalarmconf.AirAlarmConf()
+obj = aaconf.AirAlarmConf()
 obj.alarmOn = True if form["alarm_sw"].value=="ON" else False
 obj.alarmTime = datetime.datetime.strptime(form["alarm_time"].value, '%H:%M')
 obj.ctrlOn = True if form["ctrl_sw"].value=="ON" else False

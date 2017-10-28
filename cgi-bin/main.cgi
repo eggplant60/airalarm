@@ -4,7 +4,7 @@
 import cgitb
 import sys
 sys.path.append('/home/naoya/airalarm')
-import airalarmconf
+import aaconf
 
 
 ###
@@ -26,7 +26,7 @@ print "Content-type:text/html; charset=UTF-8"
 print
 
 print "<!-" # comment out standard stream of retConfStr()
-http_data = retConfStr(airalarmconf.AirAlarmConf())
+http_data = retConfStr(aaconf.AirAlarmConf())
 print "-->"
 
 ### HTML ###

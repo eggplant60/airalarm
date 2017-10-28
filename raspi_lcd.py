@@ -8,9 +8,11 @@ import time
 import smbus
 import unicodedata
 import datetime
+import RPi.GPIO as GPIO
 
 from character_table import INITIALIZE_CODES, LINEBREAK_CODE, RETURNHOME_CODE, CHAR_TABLE
 
+PIN_BACKLIGHT = 18
 LCD_WIDTH = 16
 COMMAND_ADDR = 0x00
 DATA_ADDR = 0x80
@@ -29,9 +31,11 @@ DELAY_TIME2 = 0.005 # Delay time after return home(sec)
 
 
 class LCDController:
-    def __init__(self):
+    def __init__(self, pin_bk):
+        self.pin_bk = pin_bk
+        #self.bk_on = False
         self.bus = smbus.SMBus(BUS_NUMBER)
-        pass
+        GPIO.setup(self.pin_bk, GPIO.OUT)
 
     def send_command(self, command, is_data=True):
         if is_data:
@@ -86,17 +90,29 @@ class LCDController:
                 self.send_linebreak()
             self.display_one_line(message)
 
+    def switch_backlight(self, on):
+        GPIO.output(self.pin_bk, on)
+
 
 def main():
     if not 2 <= len(sys.argv) <= 3:
         print('Usage: python raspi_lcd.py "message for line 1" ["message for line 2"]')
         return
     else:
-        lcd = LCDController()
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BCM)       # Use BCM GPIO numbers
+
+        lcd = LCDController(PIN_BACKLIGHT)
         lcd.initialize_display()
         lcd.display_messages(sys.argv[1:3])
+        lcd.switch_backlight(True)
+        time.sleep(2)
+        lcd.switch_backlight(False)
+        time.sleep(2)
         #lcd.display_one_line(1, sys.argv[1])
         #lcd.display_one_line(2, sys.argv[2])
+        GPIO.cleanup()
+
 
 if __name__ == '__main__':
     main()
