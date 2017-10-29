@@ -1,0 +1,198 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import time
+import datetime
+import sys
+import subprocess
+# handle hardware
+import am2320 as thermomiter
+import raspi_lcd as lcd
+import tsl2561 as luminometer
+import RPi.GPIO as GPIO
+# handle configuration files
+import aaconf as aac
+
+# Global variables
+DEBUG = False
+LOOP_DELAY = 0.1
+DELTA_TMP = 0.5
+
+ON_CMD = 'cd /home/naoya/airalarm/ir; ./sendir pon.data 3 24 > /dev/null'
+OFF_CMD = 'cd /home/naoya/airalarm/ir; ./sendir poff.data 3 24 > /dev/null'
+#UP_CMD = 'ir/sendir ir/tup.data 3 24'
+#DOWN_CMD = 'ir/sendir ir/tdown.data 3 24'
+
+PIN_BACKLIGHT = lcd.PIN_BACKLIGHT
+LUX_SW_BL = 100    # [Lux]
+
+WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+#=========================================
+# Print a message with time
+#=========================================
+def printDateMsg(msg):
+    d = datetime.datetime.today()
+    print d.strftime('%Y/%m/%d %H:%M:%S') + ' [MAIN] ' + msg
+
+#=========================================
+# Print an error with time
+#=========================================
+def printDateErr(msg):
+    d = datetime.datetime.today()
+    sys.stderr.write(d.strftime('%Y/%m/%d %H:%M:%S') \
+                     + ' [MAIN] ' + msg + '\n')
+
+#=========================================
+# Display information on LCD, and control its backlignt
+#=========================================
+def taskDisp():
+    d = datetime.datetime.today()
+    # Get humidity, tempareture
+    hum_str = str(thermo.getHum())[0:4]
+    tmp_str = str(thermo.getTmp())[0:4]
+    if hum_str == '0.0' and tmp_str == '0.0':
+        hum_str = '--.-'
+        tmp_str = '--.-'
+
+    if conf.dispMode == "CTRL":
+        # Generate strings for LCD
+        str1 = '%02d/%02d %02d:%02d:%02d' \
+                %(d.month, d.day, d.hour, d.minute, d.second)
+        t_ctrlTemp = conf.ctrlTemp if conf.ctrlTemp < 100 else 99
+        str2 = hum_str + "%," + tmp_str + "C " + str(t_ctrlTemp) + "C"
+        if conf.ctrlOn == True:
+            str2 += '*'
+
+    elif conf.dispMode == "ALARM":
+        # str1 = '%4d/%02d/%02d (%s)' \
+        #         %(d.year, d.month, d.day, WEEK[d.weekday()])
+        # str2 = '%02d:%02d:%02d  %02d:%02d' \
+        #         %(d.hour, d.minute, d.second, \
+        #         conf.alarmTime.hour, conf.alarmTime.minute)
+
+        if conf.alarmOn == True:
+            alarm = '*'
+        else:
+            alarm = ' '
+        # Generate strings for LCD
+        str1 = ' %02d:%02d:%02d %02d:%02d%s' \
+                %(d.hour, d.minute, d.second, \
+                  conf.alarmTime.hour, conf.alarmTime.minute, alarm)
+        str2 = ' %s %s %s' \
+               %(hum_str, tmp_str, str(lumino.getLux())[0:4])
+
+    #if not thermo.com_i2c: # to avoid conflict with am2320
+    lcd.display_messages([str1, str2])
+
+    ### Todo: Turn on/off Backlight < conf.dispOn
+    #lcd.switch_backlight(conf.dispOn)
+
+    # Turn off backlight when 
+    if lumino.getLux() > LUX_SW_BL:
+        lcd.switch_backlight(True)
+    else:
+        lcd.switch_backlight(False)
+
+
+#=========================================
+# check alarm time and send signal to air-conditioner
+#=========================================
+def taskAlarm():
+    if conf.alarmOn:
+        d = datetime.datetime.today()
+        if d.hour == conf.alarmTime.hour \
+                and d.minute == conf.alarmTime.minute:
+            conf.alarmOn = False # Turn off
+            conf.writeConf(calledCGI=False)
+            # if thermo.getTmp() < conf.onTmpMin:
+            aircon_on()
+            printDateMsg("--- Alarm! ---")
+
+
+#=========================================
+# Control room temparature
+# This is a test function.
+#=========================================
+def taskCtrl():
+    if conf.ctrlOn:
+        if thermo.getTmp() < conf.ctrlTemp-DELTA_TMP:
+            if not(conf.turnedOn):
+                printDateMsg("Control:ON")
+                aircon_on()
+                conf.turnedOn = True
+        elif thermo.getTmp() > conf.ctrlTemp+DELTA_TMP:
+            if conf.turnedOn:
+                printDateMsg("Control:OFF")
+                aircon_off()
+                conf.turnedOn = False
+
+
+#=========================================
+# Send ir signal to power on air-conditioner
+#=========================================
+def aircon_on():
+    time.sleep(0.5)
+    subprocess.call(ON_CMD,shell=True)
+    time.sleep(0.5)
+    subprocess.call(ON_CMD,shell=True)
+    conf.turnedOn = True
+
+
+#=========================================
+# Send ir signal to power off air-conditioner
+#=========================================
+def aircon_off():
+    time.sleep(0.5)
+    subprocess.call(OFF_CMD,shell=True)
+    time.sleep(0.5)
+    subprocess.call(OFF_CMD,shell=True)
+    conf.turnedOn = False
+
+
+#=========================================
+# main loop
+#=========================================
+def main_loop():
+
+    while True:
+        taskAlarm() # Alarm at alarmTime
+        taskCtrl()  # Temparature Control
+        taskDisp()  # Display on LCD
+        conf.checkReadConf() # check if conf is updated by CGI
+        time.sleep(LOOP_DELAY)
+
+
+#=========================================
+# Initialize and Generate
+#=========================================
+if __name__ == '__main__':
+
+    # Initialize GPIO & conf
+    GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)      # Use BCM GPIO numbers
+    conf = aac.AirAlarmConf()   # Handler of a configuration file
+
+    # Sensor Initialization
+    thermo = thermomiter.Thermo()
+    lumino = luminometer.Lumino()
+
+    # LCD  Initialization
+    lcd = lcd.LCDController(PIN_BACKLIGHT)
+    lcd.initialize_display()
+    lcd.display_messages(["RasbperryPi Zero", "Air Alarm"])
+    time.sleep(1)
+
+    if DEBUG:
+        printDateMsg("Checking stdout...")
+        printDateErr("Checking stderr...")
+
+    try:
+        main_loop()
+    except KeyboardInterrupt:
+        if DEBUG: printDateMsg("Keyboard Interrupt")
+    finally:
+        #conf.writeConf()    # save configuration
+        lcd.display_messages(["Goodbye!", ""])
+        GPIO.cleanup()
+# ================== EOF ==========================

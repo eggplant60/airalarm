@@ -1,6 +1,5 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# Todo: ログ出力用のバッファを実装
 
 
 import smbus
@@ -13,13 +12,13 @@ READ_INT = 10   # [sec], each reading interval is to be grater than 2 sec
 LOG_INT = 600  # [sec]
 DEBUG_MODE = True
 
-# 日時付きでメッセージ表示
+# Print a given message with the date
 def printDateMsg(msg):
     d = datetime.datetime.today()
     print  d.strftime('%Y/%m/%d %H:%M:%S') + ' [TRMO] ' + msg
 
 
-# am2320 のクラス
+# am2320
 class Thermo():
     def __init__(self):
         self.__i2c = smbus.SMBus(1)
@@ -83,8 +82,8 @@ class Thermo():
 
 
     def stringValue(self):
-        return  "湿度: " + str(self.getHum()) + "％, " \
-            + "温度: " + str(self.getTmp()) + "℃"
+        return  "Humidity: " + str(self.getHum()) + "％, " \
+            + "Temparature: " + str(self.getTmp()) + "℃"
 
 
     def displayValue(self):
