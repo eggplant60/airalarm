@@ -9,7 +9,7 @@ import threading
 address = 0x39 # 0100101(7bit,0x39)
 READ_INT = 5   # [sec], each reading interval is to be grater than 2 sec
 LOG_INT = 600  # [sec]
-DEBUG_MODE = True
+DEBUG = False
 
 # Dislpay a given message with the date
 def printDateMsg(msg):
@@ -19,15 +19,15 @@ def printDateMsg(msg):
 
 # tsl2561 (except tsl2561 CS)
 class Lumino():
-    def __init__(self):
+    def __init__(self, bus):
+        self.__bus = bus
         self.__lux = 0.0
         self.__gain = 0x00             # 0x00=x1(default), 0x10=x16
         self.__integrationTime = 0x02  # 0x02=402ms(default), 0x01=101ms, 0x00=13.7ms
         self.__scale = 16.0            # default
-        self.__i2c = smbus.SMBus(1)
 
         self.__enableSensor()
-        if DEBUG_MODE: self.__printRegisterValue()
+        if DEBUG: self.__printRegisterValue()
 
         self.tu = threading.Thread(target=self.__updateValue)
         self.tu.setDaemon(True)
@@ -38,11 +38,11 @@ class Lumino():
         self.tl.start()
 
     def __enableSensor(self):
-        self.__i2c.write_i2c_block_data(address, 0x80, [0x03])
+        self.__bus.write_i2c_block_data(address, 0x80, [0x03])
 
     def __printRegisterValue(self):
-        timing_reg = self.__i2c.read_i2c_block_data(address, 0xA1, 1)
-        id_reg = self.__i2c.read_i2c_block_data(address, 0xAA, 1)
+        timing_reg = self.__bus.read_i2c_block_data(address, 0xA1, 1)
+        id_reg = self.__bus.read_i2c_block_data(address, 0xAA, 1)
         print "Timing Register: " + str(timing_reg)
         print "ID Register: " + str(id_reg)
 
@@ -53,22 +53,25 @@ class Lumino():
         pass
 
     def __loadVisibleLightRawData(self):
-        data = self.__i2c.read_i2c_block_data(address, 0xAC ,2) # Read 2 Byte
+        data = self.__bus.read_i2c_block_data(address, 0xAC ,2) # Read 2 Byte
         raw = data[1] << 8 | data[0]
         return raw
 
     def __loadInfraredRayRawData(self):
-        data = self.__i2c.read_i2c_block_data(address, 0xAE ,2) # Read 2 Byte
+        data = self.__bus.read_i2c_block_data(address, 0xAE ,2) # Read 2 Byte
         raw = data[1] << 8 | data[0]
         return raw
 
     def __calcScale(self):
         pass
-    
+
     def __updateValue(self):
         while True:
             vl_raw = self.__loadVisibleLightRawData() * self.__scale
             ir_raw = self.__loadInfraredRayRawData() * self.__scale
+
+
+            if DEBUG: printDateMsg(str(id(self.__bus)))
 
             # Avoid 0 division
             if (float(vl_raw) == 0.0):
@@ -76,7 +79,7 @@ class Lumino():
             else:
                 ratio = (ir_raw / float(vl_raw))
 
-        
+
             # Calcuration of Lux
             if ((ratio >= 0) & (ratio <= 0.52)):
                 tmp = (0.0315 * vl_raw) - (0.0593 * vl_raw * (ratio**1.4))
@@ -114,7 +117,8 @@ class Lumino():
 
 
 def main_loop():
-    lumino = Lumino()
+    bus = smbus.SMBus(1)
+    lumino = Lumino(bus)
     while True:
         lumino.displayValue()
         time.sleep(1)

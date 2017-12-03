@@ -4,7 +4,7 @@
 import datetime
 import os
 
-ADEBUG = True
+DEBUG = True
 
 #=========================================
 # Path
@@ -18,21 +18,6 @@ CGI_UPDATE = '/tmp/cgi_update.tmp'   # temporary file created after update of co
 def printDateMsg(msg):
     d = datetime.datetime.today()
     print d.strftime('%Y/%m/%d %H:%M:%S') + ' [CONF] ' + msg
-
-#=========================================
-# Class of (single) configuration parameter
-#=========================================
-# class ConfItem:
-#     def __init__(self, _name, _onoff, _value):
-#         self.name = _name
-#         self.onoff = _onoff
-#         self.value = _value
-#
-#     def str2Value(self):
-#         return
-#
-#     def returnLine(self):
-#         return
 
 #=========================================
 # Class to handle configuration files
@@ -58,9 +43,9 @@ class AirAlarmConf:
                 for line in csvf.readlines():
                     tmp = line.rstrip('\n')     # get rid of return code
                     str_list = tmp.split(',')   # Convert CSV form into list
-                    if ADEBUG:
-                        #printDateMsg("csv data is")
-                        print str_list
+                    if DEBUG:
+                        printDateMsg(tmp)
+                        #print str_list
 
                     if str_list[0] == "ALARM":
                         self.alarmOn = onoff2b(str_list[1])
@@ -77,7 +62,7 @@ class AirAlarmConf:
     # check temporary file created by CGI and read conf
     def checkReadConf(self):
         if os.path.exists(CGI_UPDATE):
-            if ADEBUG: printDateMsg("Conf is updated by CGI, reading...")
+            if DEBUG: printDateMsg("Conf is updated by CGI, reading...")
             self.readConf()
             os.remove(CGI_UPDATE)  # clear flag
 
@@ -99,7 +84,7 @@ class AirAlarmConf:
         if calledCGI:
             try:
                 with open(CGI_UPDATE, 'w') as wf:
-                    if ADEBUG: printDateMsg("CGI_UPDATE is created by CGI")
+                    if DEBUG: printDateMsg("CGI_UPDATE is created by CGI")
             except:
                 printDateMsg("Permission Error: " + CGI_UPDATE)
 #================== EOF =========================

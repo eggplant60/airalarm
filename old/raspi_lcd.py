@@ -22,21 +22,19 @@ SLEEP_TIME = 0.01 # Sleep time after initializing display(sec)
 DELAY_TIME1 = 0.001 # Delay time between characters(sec)
 DELAY_TIME2 = 0.005 # Delay time after return home(sec)
 
-DEBUG = False
-
 #=========================================
 # print messages with time
 #=========================================
-# def printDateMsg(msg):
-#     d = datetime.datetime.today()
-#     print d.strftime('%Y/%m/%d %H:%M:%S') + ' [LCDC] ' + msg
+#def printDateMsg(msg):
+#    d = datetime.datetime.today()
+#    print d.strftime('%Y/%m/%d %H:%M:%S') + ' [LCDC] ' + msg
 
 
 class LCDController:
-    def __init__(self, bus, pin_bk):
-        self.bus = bus
+    def __init__(self, pin_bk):
         self.pin_bk = pin_bk
         #self.bk_on = False
+        self.bus = smbus.SMBus(BUS_NUMBER)
         GPIO.setup(self.pin_bk, GPIO.OUT)
 
     def send_command(self, command, is_data=True):
@@ -104,13 +102,12 @@ def main():
         GPIO.setwarnings(False)
         GPIO.setmode(GPIO.BCM)       # Use BCM GPIO numbers
 
-        bus = smbus.SMBus(BUS_NUMBER)
-        lcd = LCDController(bus, PIN_BACKLIGHT)
+        lcd = LCDController(PIN_BACKLIGHT)
         lcd.initialize_display()
         lcd.display_messages(sys.argv[1:3])
         lcd.switch_backlight(True)
-        time.sleep(2)
-        lcd.switch_backlight(False)
+        #time.sleep(2)
+        #lcd.switch_backlight(False)
         #time.sleep(2)
         #lcd.display_one_line(1, sys.argv[1])
         #lcd.display_one_line(2, sys.argv[2])

@@ -6,10 +6,12 @@ import datetime
 import sys
 import subprocess
 # handle hardware
-import am2320 as thermomiter
+#import am2320 as thermomiter
+import bme280 as thermomiter
 import raspi_lcd as lcd
 import tsl2561 as luminometer
 import RPi.GPIO as GPIO
+import smbus
 # handle configuration files
 import aaconf as aac
 
@@ -48,9 +50,12 @@ def printDateErr(msg):
 #=========================================
 def taskDisp():
     d = datetime.datetime.today()
-    # Get humidity, tempareture
+    # Get humidity, tempareture, pressure, lumino
     hum_str = str(thermo.getHum())[0:4]
     tmp_str = str(thermo.getTmp())[0:4]
+    prs_str = str(thermo.getPrs())[0:4]
+    lux_str = str(lumino.getLux())[0:4]
+
     if hum_str == '0.0' and tmp_str == '0.0':
         hum_str = '--.-'
         tmp_str = '--.-'
@@ -80,7 +85,7 @@ def taskDisp():
                 %(d.hour, d.minute, d.second, \
                   conf.alarmTime.hour, conf.alarmTime.minute, alarm)
         str2 = ' %s %s %s' \
-               %(hum_str, tmp_str, str(lumino.getLux())[0:4])
+               %(hum_str, tmp_str, prs_str)
 
     #if not thermo.com_i2c: # to avoid conflict with am2320
     lcd.display_messages([str1, str2])
@@ -88,7 +93,7 @@ def taskDisp():
     ### Todo: Turn on/off Backlight < conf.dispOn
     #lcd.switch_backlight(conf.dispOn)
 
-    # Turn off backlight when 
+    # Turn off backlight when
     if lumino.getLux() > LUX_SW_BL:
         lcd.switch_backlight(True)
     else:
@@ -168,17 +173,19 @@ def main_loop():
 #=========================================
 if __name__ == '__main__':
 
-    # Initialize GPIO & conf
+    # Initialize GPIO, conf, bus
     GPIO.setwarnings(False)
     GPIO.setmode(GPIO.BCM)      # Use BCM GPIO numbers
     conf = aac.AirAlarmConf()   # Handler of a configuration file
+    bus = smbus.SMBus(1)        # i2c bus shared by sensors and lcd
+    if DEBUG: print(id(bus))
 
     # Sensor Initialization
-    thermo = thermomiter.Thermo()
-    lumino = luminometer.Lumino()
+    thermo = thermomiter.Thermo(bus)
+    lumino = luminometer.Lumino(bus)
 
     # LCD  Initialization
-    lcd = lcd.LCDController(PIN_BACKLIGHT)
+    lcd = lcd.LCDController(bus, PIN_BACKLIGHT)
     lcd.initialize_display()
     lcd.display_messages(["RasbperryPi Zero", "Air Alarm"])
     time.sleep(1)
@@ -193,6 +200,8 @@ if __name__ == '__main__':
         if DEBUG: printDateMsg("Keyboard Interrupt")
     finally:
         #conf.writeConf()    # save configuration
+        bus.close()
         lcd.display_messages(["Goodbye!", ""])
+        time.sleep(1)
         GPIO.cleanup()
 # ================== EOF ==========================
