@@ -33,9 +33,9 @@ class Lumino():
         self.tu.setDaemon(True)
         self.tu.start()
 
-        self.tl = threading.Thread(target=self.__logValue)
-        self.tl.setDaemon(True)
-        self.tl.start()
+        #self.tl = threading.Thread(target=self.__logValue)
+        #self.tl.setDaemon(True)
+        #self.tl.start()
 
     def __enableSensor(self):
         self.__bus.write_i2c_block_data(address, 0x80, [0x03])

@@ -43,9 +43,9 @@ class Thermo():
         self.tu.start()
 
         # Thread for logging
-        self.tl = threading.Thread(target=self.logValue)
-        self.tl.setDaemon(True)
-        self.tl.start()
+        #self.tl = threading.Thread(target=self.logValue)
+        #self.tl.setDaemon(True)
+        #self.tl.start()
 
     def setup(self):
         osrs_t = 1  # Temperature oversampling x 1

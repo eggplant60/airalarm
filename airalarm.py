@@ -5,6 +5,7 @@ import time
 import datetime
 import sys
 import subprocess
+import threading
 # handle hardware
 #import am2320 as thermomiter
 import bme280 as thermomiter
@@ -19,16 +20,16 @@ import aaconf as aac
 DEBUG = False
 LOOP_DELAY = 0.1
 DELTA_TMP = 0.5
-
+LOG_DELAY = 600
 ON_CMD = 'cd /home/naoya/airalarm/ir; ./sendir pon.data 3 24 > /dev/null'
 OFF_CMD = 'cd /home/naoya/airalarm/ir; ./sendir poff.data 3 24 > /dev/null'
 #UP_CMD = 'ir/sendir ir/tup.data 3 24'
 #DOWN_CMD = 'ir/sendir ir/tdown.data 3 24'
-
 PIN_BACKLIGHT = lcd.PIN_BACKLIGHT
 LUX_SW_BL = 100    # [Lux]
+LOG_FILE = '/home/naoya/airalarm/log.csv'
 
-WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
 
 #=========================================
 # Print a message with time
@@ -48,6 +49,7 @@ def printDateErr(msg):
 #=========================================
 # Display information on LCD, and control its backlignt
 #=========================================
+WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 def taskDisp():
     d = datetime.datetime.today()
     # Get humidity, tempareture, pressure, lumino
@@ -169,6 +171,23 @@ def main_loop():
 
 
 #=========================================
+# log loop
+#=========================================
+def log_loop():
+    while True:
+        print('logging...')
+        with open(LOG_FILE, 'a') as f:
+            str_list = [datetime.datetime.today().strftime('%Y-%m-%dT%H:%M:%S')]
+            str_list.append( str(thermo.getHum())[0:6] )
+            str_list.append( str(thermo.getTmp())[0:6] )
+            str_list.append( str(thermo.getPrs())[0:6] )
+            str_list.append( str(lumino.getLux())[0:6] )
+            line = ','.join(str_list) + '\n'
+            f.write(line)
+        time.sleep(LOG_DELAY)
+
+
+#=========================================
 # Initialize and Generate
 #=========================================
 if __name__ == '__main__':
@@ -193,6 +212,10 @@ if __name__ == '__main__':
     if DEBUG:
         printDateMsg("Checking stdout...")
         printDateErr("Checking stderr...")
+
+    tl = threading.Thread(target=log_loop)
+    tl.setDaemon(True)
+    tl.start()
 
     try:
         main_loop()

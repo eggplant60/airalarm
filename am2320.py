@@ -32,9 +32,9 @@ class Thermo():
         self.tu.setDaemon(True)
         self.tu.start()
 
-        self.tl = threading.Thread(target=self.__logValue)
-        self.tl.setDaemon(True)
-        self.tl.start()
+        #self.tl = threading.Thread(target=self.__logValue)
+        #self.tl.setDaemon(True)
+        #self.tl.start()
 
 
     def __updateValue(self):
