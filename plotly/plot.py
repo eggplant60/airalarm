@@ -16,8 +16,8 @@ app.layout = html.Div(children=[
         id='range-dropdown',
         options=[
             {'label': 'All', 'value': 'v_all'},
-            {'label': 'Week', 'value': 'v_week'},
-            {'label': '3 days', 'value': 'v_3days'}
+            {'label': 'Last week', 'value': 'v_week'},
+            {'label': 'Last 3 days', 'value': 'v_3days'}
         ],
         value='v_week'
     ),

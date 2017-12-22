@@ -21,8 +21,8 @@ DEBUG = False
 LOOP_DELAY = 0.1
 DELTA_TMP = 0.5
 LOG_DELAY = 600
-ON_CMD = 'cd /home/naoya/airalarm/ir; ./sendir pon.data 3 24 > /dev/null'
-OFF_CMD = 'cd /home/naoya/airalarm/ir; ./sendir poff.data 3 24 > /dev/null'
+ON_CMD = 'cd /home/naoya/airalarm/ir; ./sendir data/p_on 3 24 > /dev/null'
+OFF_CMD = 'cd /home/naoya/airalarm/ir; ./sendir data/p_off 3 24 > /dev/null'
 #UP_CMD = 'ir/sendir ir/tup.data 3 24'
 #DOWN_CMD = 'ir/sendir ir/tdown.data 3 24'
 PIN_BACKLIGHT = lcd.PIN_BACKLIGHT
@@ -137,8 +137,11 @@ def taskCtrl():
 
 #=========================================
 # Send ir signal to power on air-conditioner
+# Note: This function stops update of LCD during execution
 #=========================================
 def aircon_on():
+    time.sleep(0.5)
+    subprocess.call(ON_CMD,shell=True)
     time.sleep(0.5)
     subprocess.call(ON_CMD,shell=True)
     time.sleep(0.5)
@@ -148,8 +151,11 @@ def aircon_on():
 
 #=========================================
 # Send ir signal to power off air-conditioner
+# Note: This function stops update of LCD during execution
 #=========================================
 def aircon_off():
+    time.sleep(0.5)
+    subprocess.call(OFF_CMD,shell=True)
     time.sleep(0.5)
     subprocess.call(OFF_CMD,shell=True)
     time.sleep(0.5)
@@ -174,6 +180,7 @@ def main_loop():
 # log loop
 #=========================================
 def log_loop():
+    time.sleep(10) # waiting for starting up devices 
     while True:
         print('logging...')
         with open(LOG_FILE, 'a') as f:
