@@ -2,30 +2,44 @@
 
 ![raspi_photo](image/raspi_photo.JPG)
 
+
 ## 概要
 
-**「寒い冬、朝起きるときに暖房がついていたらいいな」**という想いを形にしました。
+__「寒い冬、朝起きるときに暖房がついていたらいいな」__という想いを形にしました。
 
 Raspberry Pi Zero に以下の機能を実装しました。
 
-- 設定した時刻に、エアコンの電源を入れる
-- 時刻設定等はWebアプリで行う
-- 現在時刻、温度/湿度、照度をLCDに表示する(バックライトの自動点灯/消灯機能つき）
+- 設定時刻にエアコンの電源ON
+- 現在時刻、温度、湿度、大気圧をLCDに表示(バックライトは自動点灯/消灯）
+
+また、REST API 経由で以下の操作ができます。
+
+- 現在の温度、湿度、大気圧の取得
+- エアコンをONにする時刻の設定
+- 基本的なエアコン操作(ON/OFF, 設定温度および風量の変更)
+
 
 ## 回路図
 
 Raspberry Pi Zero のピンアサイン（参考）:
 http://i0.wp.com/daisuke-ogura.ciao.jp/wp-content/uploads/2016/04/Zero_pin1.jpg
 
+
 ## 必要なもの
 
 - Raspberry Pi Zero
 - キャラクタLCD ACM1602NI-FLW-FBW-M01
-- 10kΩの半固定抵抗
-- 温湿度センサAM2320
-- 照度センサTSL2561モジュール
+- 半固定抵抗(10kΩ)
+- 温湿度センサ BME280
+- 照度センサ TSL2561
+- 赤外線LED OSI5LA5113A
+- 赤外線受光モジュール PL-IRM2161-XD1
+- MOSFET 2SK4150TZ-E x2
+- 抵抗(10kΩ x2, 20Ω x1)
+- LED光拡散キャップ
 
 その他、SDカード、Micro USBケーブル、ブレッドボード、ジャンパワイヤなど
+
 
 ## インストール
 
@@ -42,6 +56,5 @@ http://i0.wp.com/daisuke-ogura.ciao.jp/wp-content/uploads/2016/04/Zero_pin1.jpg
 
 4. Supervisorへの登録
 
-## 参考URL
 
--
+## 参考URL

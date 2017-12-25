@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>AirAlarm</title>
+    <meta name="viewport" content="width:device-width,initial-scale=1.0">
+    <link rel="shortcut icon" href="/static/icon_115860_256.jpg">    
+  </head>
+  
+  <body>
+    <!-- Title -->
+    <h2><img src="/static/icon_115860_256.jpg" alt="" width=18 height=19> AirAlarm 設定</h2>
+    
+    <form name="form1" method="POST" action="/app/post">
+
+      <div>
+	<p>アラーム機能:
+	  <select name="alarm_sw">
+	    <option value="on" {{ preset.alarm_sw_on }}>ON</option>
+	    <option value="off" {{ preset.alarm_sw_off }}>OFF</option>
+	  </select>
+	</p>
+	<p>
+	  設定時刻: <input name="alarm_time" type="time" style="width:80px" value={{ preset.alarm_time }}>
+	</p>
+      </div>
+      <Hr Width="100%">
+      <!-- ------------------------------------------ -->
+
+      <div>
+	<p>温度調整機能: 
+	  <select name="ctrl_sw">
+	    <option value="on" {{ preset.ctrl_sw_on }}>ON</option>
+	    <option value="off" {{ preset.ctrl_sw_off }}>OFF</option>
+	  </select>
+	</p>
+	<p>
+	  設定温度: <input name="ctrl_temp" type="number" style="width:40px" value={{ preset.ctrl_temp }}>
+        </p>
+      </div>
+      <Hr Width="100%">
+      <!-- ------------------------------------------ -->      
+
+      <div>
+	{% if submit %}
+	送信完了しました。
+	<input type="button" onclick="location.href='/app/' "value="戻る">
+	{% else %}
+        <input type="submit" value="セット">
+	{% endif %}
+      </div>
+      <Hr Width="100%">
+      <!-- ------------------------------------------ -->
+
+    </form>
+    
+  </body>
+</html>

@@ -3,19 +3,22 @@
 
 import datetime
 import os
+import json
+import copy
 
 DEBUG = True
 
 #=========================================
 # Path
 #=========================================
+
 CONF_FILE = '/etc/airalarm.conf'     # general configuration file
-CGI_UPDATE = '/tmp/cgi_update.tmp'   # temporary file created after update of conf
+
 
 #=========================================
 # print messages with time
 #=========================================
-def printDateMsg(msg):
+def print_date_msg(msg):
     d = datetime.datetime.today()
     print d.strftime('%Y/%m/%d %H:%M:%S') + ' [CONF] ' + msg
 
@@ -25,66 +28,135 @@ def printDateMsg(msg):
 class AirAlarmConf:
     def __init__(self):
         # Initialize variables
-        self.alarmOn = False
-        self.alarmTime = datetime.datetime(2017,1,1,7,0,0)
-        self.ctrlOn = False
-        self.ctrlTemp = 20
-        self.dispOn = False # Backlight
-        self.dispMode = "ALARM"
-        #
-        self.turnedOn = False  # True if aircon is turned on
-        self.readConf()
+        self.__conf_dict = {'alarm_on'  : 'off',
+                            'alarm_time': {'hour': 7, 'minute': 30},
+                            'ctrl_on'   : 'off',
+                            'ctrl_temp' : 24, # target temp
+        }
+        self.read_conf()        # Load previous configurations
+        
+        self.turned_on = False  # True if aircon is turned on else False
+        self.preset_tmp = 20    # 
 
-    # Executed in initailization of airalrm.py and in CGI script
-    def readConf(self):
-        onoff2b = lambda s: True if s == "ON" else False
-        try:
-            with open(CONF_FILE, 'r') as csvf:
-                for line in csvf.readlines():
-                    tmp = line.rstrip('\n')     # get rid of return code
-                    str_list = tmp.split(',')   # Convert CSV form into list
-                    if DEBUG:
-                        printDateMsg(tmp)
-                        #print str_list
 
-                    if str_list[0] == "ALARM":
-                        self.alarmOn = onoff2b(str_list[1])
-                        self.alarmTime = datetime.datetime.strptime(str_list[2], '%H:%M')
-                    elif str_list[0] == "CTRL":
-                        self.ctrlOn = onoff2b(str_list[1])
-                        self.ctrlTemp = int(str_list[2])
-                    elif str_list[0] == "DISP":
-                        self.dispOn = onoff2b(str_list[1])
-                        self.dispMode = str_list[2]
-        except:
-            printDateMsg("Read Error: " + CONF_FILE)
-
-    # check temporary file created by CGI and read conf
-    def checkReadConf(self):
-        if os.path.exists(CGI_UPDATE):
-            if DEBUG: printDateMsg("Conf is updated by CGI, reading...")
-            self.readConf()
-            os.remove(CGI_UPDATE)  # clear flag
-
-    # Write configuration file
-    def writeConf(self, calledCGI=True):
-        b2onoff = lambda b: "ON" if b else "OFF"
-        try:
-            with open(CONF_FILE, 'w') as csvf:
-                body = "ALARM," + b2onoff(self.alarmOn) + ',' \
-                    + self.alarmTime.strftime('%H:%M') + '\n' \
-                    + "CTRL," + b2onoff(self.ctrlOn) + ',' \
-                    + str(self.ctrlTemp) + '\n' \
-                    + "DISP," + b2onoff(self.dispOn) + ',' \
-                    + str(self.dispMode)
-                csvf.write(body)
-        except:
-            printDateMsg("Write Error: " + CONF_FILE)
-        # ------------ create CGI_UPDATE if called by CGI -------------
-        if calledCGI:
+    # Usage: v1, v2, ... = get_conf('key1', 'key2', ...)
+    def get_conf(self, *keys):
+        ret_list = []
+        for key in keys:
             try:
-                with open(CGI_UPDATE, 'w') as wf:
-                    if DEBUG: printDateMsg("CGI_UPDATE is created by CGI")
+                ret_list.append(self.__conf_dict[key])
             except:
-                printDateMsg("Permission Error: " + CGI_UPDATE)
+                print_date_msg('Missing keys.')
+                return None
+
+        if len(ret_list) == 1:
+            return ret_list[0]
+        else:
+            return ret_list
+
+
+    # Return Example: "08:00"
+    def get_str_alarm_time(self):
+        hour_str = str(self.__conf_dict['alarm_time']['hour']).zfill(2)
+        minute_str = str(self.__conf_dict['alarm_time']['minute']).zfill(2)
+        return hour_str + ':' + minute_str
+
+    
+    def get_all_conf(self):
+        return self.__conf_dict
+
+    
+    # Usage: get_conf(key1=value1, key2=value2, ...)
+    def set_conf(self, **kwargs):
+        temp_dict = copy.deepcopy(self.__conf_dict)
+        try:
+            for key, value in kwargs.items():
+                temp_dict[key] = value
+        except:
+            return False
+
+        if not self.check_conf(temp_dict):
+            return False
+
+        self.__conf_dict = copy.deepcopy(temp_dict)
+        return True
+
+
+    # Check if args are valid
+    def check_conf(self, dict_a):
+        if len(dict_a) != 4:
+            return False
+
+        if dict_a['alarm_on'] != 'on' and dict_a['alarm_on'] != 'off':
+            return False
+        
+        if isinstance(dict_a['alarm_time']['hour'], int) and \
+           0 <= dict_a['alarm_time']['hour'] <= 23:
+            pass
+        else:
+            return False
+        
+        if isinstance(dict_a['alarm_time']['minute'], int) and \
+           0 <= dict_a['alarm_time']['minute'] <= 59:
+            pass
+        else:
+            return False
+
+        if dict_a['ctrl_on'] != 'on' and dict_a['ctrl_on'] != 'off':
+            return False
+
+        if isinstance(dict_a['ctrl_temp'], int) and \
+           18 <= dict_a['ctrl_temp'] <= 30:
+            pass
+        else:
+            return False
+
+        return True
+    
+             
+    # Load previous __conf_dict at start up
+    def read_conf(self):
+        try:
+            with open(CONF_FILE, 'r') as f:
+                temp_dict = json.load(f)                
+                if not self.check_conf(temp_dict):
+                    raise
+                self.__conf_dict = copy.deepcopy(temp_dict)
+        except:
+            print_date_msg("Read Error: " + CONF_FILE)
+
+
+    # Write __conf_dict when values are changed
+    def write_conf(self):
+        
+        try:
+            with open(CONF_FILE, 'w') as f:
+                json.dump(self.__conf_dict, f,
+                          ensure_ascii=False, indent=4,
+                          sort_keys=True, separators=(',', ': '))
+        except:
+            print_date_msg("Write Error: " + CONF_FILE)
+
+
+if __name__ == '__main__':
+    conf = AirAlarmConf()
+
+    print('======= Check read_conf() ========')
+    print(conf.get_conf('alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp'))
+
+    print('====== Check get_conf() ========')
+    print(conf.get_conf('alarm_on'))
+    print(conf.get_conf('alarm_time'))
+
+    print('====== Check get_str_alarm_time() ========')
+    print(conf.get_str_alarm_time())
+
+    print('====== Chech set_conf() ========')
+    print(conf.set_conf(alarm_time={'hour':7, 'minute':30}, alarm_on='on', ctrl_temp=24))
+    print(conf.get_conf('alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp'))
+
+    print('====== Chech write_conf() ========')
+    print(conf.write_conf())
+
+    
 #================== EOF =========================
