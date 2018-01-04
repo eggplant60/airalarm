@@ -34,9 +34,13 @@ class AirAlarmConf:
                             'ctrl_temp' : 24, # target temp
         }
         self.read_conf()        # Load previous configurations
-        
-        self.turned_on = False  # True if aircon is turned on else False
-        self.preset_tmp = 20    # 
+
+        self.preset_dict = {'power' : 'on',
+                            'target_temp' : self.get_conf('ctrl_temp'),
+                            'wind_amount' : 'auto',
+        }
+        #self.turned_on = True  
+        #self.preset_tmp = 
 
 
     # Usage: v1, v2, ... = get_conf('key1', 'key2', ...)

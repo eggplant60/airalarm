@@ -1,4 +1,4 @@
 #/bin/sh
 
 cd `dirname $0`
-./sendir ./poff.data 3 24
+./sendir data/p_off 3 24

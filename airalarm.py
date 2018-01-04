@@ -23,11 +23,9 @@ import controller
 
 # Global variables
 DEBUG = False
-LOOP_DELAY = 0.1
-DELTA_TMP = 0.5
-LOG_DELAY = 600
 PIN_BACKLIGHT = raspi_lcd.PIN_BACKLIGHT
-LUX_SW_BL = 100    # [Lux]
+LUX_SW_BL = 100    # [Lux], BL = Back Light
+LUX_SW_AIR = 50    # [Lux]
 LOG_FILE = '/home/naoya/airalarm/log.csv'
 
 
@@ -86,45 +84,55 @@ def task_disp():
         lcd.switch_backlight(False)
 
 
-
+        
 #=========================================
 # Send Ir signals to aircon
-# 1. Power on aircon if it is alarm time
-# 2. Turn up/down aircon depending on room temparature
+# Task 1. Power on aircon if it is alarm time
+# Task 2. Turn up/down aircon depending on room temparature
+# Task 3. Power off aircon if it is dark
 #=========================================
 def task_ir():
-    # 1.
+    
+    # Task 1
     if conf.get_conf('alarm_on') == 'on':
         d = datetime.datetime.today()
         a_time = conf.get_conf('alarm_time')       
         if d.hour == a_time['hour'] and d.minute == a_time['minute']:
             ctrl_air.enqueue('p_on')
+            conf.preset_dict['power'] = 'on'
             conf.set_conf(alarm_on='off') # Clear flag
             conf.write_conf()
             print_date_msg("=== Power ON! ===")
 
-    # 2. 
-    # elif conf.ctrlOn:
-    #     if thermo.getTmp() < conf.ctrlTemp-DELTA_TMP:
-    #         if not(conf.turnedOn):
-    #             print_date_msg("Control:ON")
-    #             aircon_on()
-    #             conf.turnedOn = True
-    #     elif thermo.getTmp() > conf.ctrlTemp+DELTA_TMP:
-    #         if conf.turnedOn:
-    #             print_date_msg("Control:OFF")
-    #             aircon_off()
-    #             conf.turnedOn = False
-   
+    # Task 2
+    # the commands are queued in ctrl_loop()
+
+    # Task 3
+    if lumino.get_lux() < LUX_SW_AIR and conf.preset_dict['power'] == 'on':
+        ctrl_air.enqueue('p_off')
+        conf.preset_dict['power'] = 'off'
+    elif lumino.get_lux() >= LUX_SW_AIR and conf.preset_dict['power'] == 'off':
+        ctrl_air.enqueue('p_on')
+        conf.preset_dict['power'] = 'on'
+
     ctrl_air.dequeue_all() # execute commands
 
 
+    
+# first time, match the actual preset of aircon and the internal variables
+def match_preset_variables():
+    ctrl_air.enqueue('p_' + conf.preset_dict['power'])
+    ctrl_air.enqueue('t_' + str(conf.preset_dict['target_temp']))
+    ctrl_air.enqueue('w_' + conf.preset_dict['wind_amount'])
+    ctrl_air.dequeue_all() # execute commands
+    
 
 #=========================================
 # main loop
 #=========================================
 def main_loop():
-
+    LOOP_DELAY = 0.1
+    match_preset_variables()    
     while True:
         task_ir()    # Send ir signal to aircon
         task_disp()  # Display on LCD
@@ -136,6 +144,7 @@ def main_loop():
 # logging loop
 #=========================================
 def log_loop():
+    LOG_DELAY = 600
     time.sleep(10) # waiting for starting up devices 
     while True:
         print_date_msg('logging...')
@@ -148,6 +157,36 @@ def log_loop():
             line = ','.join(str_list) + '\n'
             f.write(line)
         time.sleep(LOG_DELAY)
+
+
+        
+#=========================================
+# control loop
+#=========================================
+def ctrl_loop():
+    CTRL_DELAY = 300
+    TEMP_DELTA = 1.0
+    time.sleep(10) # waiting for starting up devices
+    while True:
+        if conf.get_conf('ctrl_on') == 'on' \
+           and conf.preset_dict['power'] == 'on':
+            print_date_msg('ctrl starts.')
+            ctrl_temp = conf.get_conf('ctrl_temp')
+            now_temp = thermo.get_tmp()
+            
+            if ctrl_temp + TEMP_DELTA < now_temp:
+                cmd_str = 't_' + str(conf.preset_dict['target_temp'] - 1)
+                ctrl_air.enqueue(cmd_str)
+                conf.preset_dict['target_temp'] -= 1
+                print_date_msg('preset: {}'.format(conf.preset_dict['target_temp']))
+                                     
+            elif now_temp + TEMP_DELTA < ctrl_temp:
+                cmd_str = 't_' + str(conf.preset_dict['target_temp'] + 1)
+                ctrl_air.enqueue(cmd_str)
+                conf.preset_dict['target_temp'] += 1
+                print_date_msg('preset: {}'.format(conf.preset_dict['target_temp']))
+
+        time.sleep(CTRL_DELAY)
 
         
 
@@ -177,11 +216,13 @@ def return_preset():
     }
 
 
+# index page
 @app.route('/app/', methods=['GET', 'POST'])
 def index():
     return render_template('index.html', preset=return_preset(), submit=False)
 
 
+# submit page
 @app.route('/app/post', methods=['POST'])
 def post():
     try:
@@ -204,7 +245,8 @@ def post():
     except:
         return redirect(url_for('index'))
 
-    
+
+# REST API for getting values
 @app.route('/app/values', methods=['GET'])
 def get_values():
     response = {
@@ -217,6 +259,13 @@ def get_values():
     return jsonify(response), 200
 
 
+# REST API for getting preset of aircon
+@app.route('/app/preset', methods=['GET'])
+def get_preset():
+    return jsonify(conf.preset_dict), 200
+
+
+# REST API for posting commands to aircon directly
 @app.route('/app/ctrl', methods=['POST'])
 def post_ctrl():
 
@@ -239,6 +288,7 @@ def post_ctrl():
 
         if result == True:
             ctrls_queued.append({key:value})
+            conf.preset_dict[key] = value
         
     if not ctrls_queued:
         return 'Missing values', 400
@@ -248,6 +298,7 @@ def post_ctrl():
     return jsonify(response), 201
 
 
+# REST API for posting the configurations (ex. alarm time)
 @app.route('/app/conf', methods=['POST'])
 def post_configurations():
 
@@ -255,15 +306,15 @@ def post_configurations():
         print(request.headers['Content-Type'])
         return 'Missing values', 400
     
-    confs = request.json
+    posted_confs = request.json
 
     # Check that the required fields are in the POST'ed data
     conf_type = ['alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp']
-    if not any(k in confs.keys() for k in conf_type):
+    if not any(k in posted_confs.keys() for k in conf_type):
         return 'Missing values', 400
 
     confs_previous = conf.get_all_conf()
-    for key, value in confs.items():
+    for key, value in posted_confs.items():
         conf.set_conf(key=value)
         
     conf.write_conf()
@@ -310,7 +361,12 @@ if __name__ == '__main__':
     tw = threading.Thread(target=webapi_loop)
     tw.setDaemon(True)
     tw.start()
-    
+
+    # Thread for controller
+    tc = threading.Thread(target=ctrl_loop)
+    tc.setDaemon(True)
+    tc.start()
+
     main_loop()
     try:
         main_loop()
