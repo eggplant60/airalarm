@@ -17,9 +17,10 @@ app.layout = html.Div(children=[
         options=[
             {'label': 'All', 'value': 'v_all'},
             {'label': 'Last week', 'value': 'v_week'},
-            {'label': 'Last 3 days', 'value': 'v_3days'}
+            {'label': 'Last 3 days', 'value': 'v_3days'},
+            {'label': 'Today', 'value': 'v_today'},
         ],
-        value='v_week'
+        value='v_today'
     ),
 
     html.H3(children='Graphs'),
@@ -46,8 +47,10 @@ def update_data(selected_range):
         data = raw
     elif selected_range == 'v_week':
         data = raw[-1008:] # 7days x 24hours x 60min / 10min
-    else:
+    elif selected_range == 'v_3days':
         data = raw[-432:] # 3days x 24hours x 60min / 10min
+    else:
+        data = raw[-144:] # 24hours x 60min / 10min
     return data.to_json(date_format='iso', orient='split')
 
 
