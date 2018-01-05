@@ -17,8 +17,7 @@ import requests
 import bme280
 import raspi_lcd
 import tsl2561
-import aaconf
-import controller
+import ac
 
 
 # Global variables
@@ -64,7 +63,7 @@ def task_disp():
         hum_str = '--.-'
         tmp_str = '--.-'
 
-    if conf.get_conf('alarm_on') == 'on':
+    if acc.get_conf('alarm_on') == 'on':
         alarm_str = '*'
     else:
         alarm_str = ' '
@@ -72,7 +71,7 @@ def task_disp():
     # Generate strings for LCD
     str1 = ' %02d:%02d:%02d %s%s' \
            %(d.hour, d.minute, d.second, \
-             conf.get_str_alarm_time(), alarm_str)
+             acc.get_str_alarm_time(), alarm_str)
     str2 = ' %s %s %s' \
            %(hum_str, tmp_str, prs_str)
     lcd.display_messages([str1, str2])
@@ -94,37 +93,34 @@ def task_disp():
 def task_ir():
     
     # Task 1
-    if conf.get_conf('alarm_on') == 'on':
+    if acc.get_conf('alarm_on') == 'on':
         d = datetime.datetime.today()
-        a_time = conf.get_conf('alarm_time')       
+        a_time = acc.get_conf('alarm_time')       
         if d.hour == a_time['hour'] and d.minute == a_time['minute']:
-            ctrl_air.enqueue('p_on')
-            conf.preset_dict['power'] = 'on'
-            conf.set_conf(alarm_on='off') # Clear flag
-            conf.write_conf()
+            ac_ctrl.enqueue('p_on')
+            acc.set_conf(alarm_on='off') # Clear flag
+            acc.write_conf()
             print_date_msg("=== Power ON! ===")
 
     # Task 2
     # the commands are queued in ctrl_loop()
 
     # Task 3
-    if lumino.get_lux() < LUX_SW_AIR and conf.preset_dict['power'] == 'on':
-        ctrl_air.enqueue('p_off')
-        conf.preset_dict['power'] = 'off'
-    elif lumino.get_lux() >= LUX_SW_AIR and conf.preset_dict['power'] == 'off':
-        ctrl_air.enqueue('p_on')
-        conf.preset_dict['power'] = 'on'
+    if lumino.get_lux() < LUX_SW_AIR and ac_ctrl.get_preset()['power'] == 'on':
+        ac_ctrl.enqueue('p_off')
+    elif lumino.get_lux() >= LUX_SW_AIR and ac_ctrl.get_preset()['power'] == 'off':
+        ac_ctrl.enqueue('p_on')
 
-    ctrl_air.dequeue_all() # execute commands
+    ac_ctrl.dequeue_all() # execute commands
 
 
     
 # first time, match the actual preset of aircon and the internal variables
 def match_preset_variables():
-    ctrl_air.enqueue('p_' + conf.preset_dict['power'])
-    ctrl_air.enqueue('t_' + str(conf.preset_dict['target_temp']))
-    ctrl_air.enqueue('w_' + conf.preset_dict['wind_amount'])
-    ctrl_air.dequeue_all() # execute commands
+    ac_ctrl.enqueue('p_on')
+    ac_ctrl.enqueue('t_' + str(acc.get_conf('ctrl_temp')+1))
+    ac_ctrl.enqueue('w_high')
+    ac_ctrl.dequeue_all(n_cmd=1) # execute commands
     
 
 #=========================================
@@ -168,23 +164,21 @@ def ctrl_loop():
     TEMP_DELTA = 1.0
     time.sleep(10) # waiting for starting up devices
     while True:
-        if conf.get_conf('ctrl_on') == 'on' \
-           and conf.preset_dict['power'] == 'on':
+        if acc.get_conf('ctrl_on') == 'on' \
+           and ac_ctrl.get_preset()['power'] == 'on':
             print_date_msg('ctrl starts.')
-            ctrl_temp = conf.get_conf('ctrl_temp')
+            ctrl_temp = acc.get_conf('ctrl_temp')
             now_temp = thermo.get_tmp()
             
             if ctrl_temp + TEMP_DELTA < now_temp:
-                cmd_str = 't_' + str(conf.preset_dict['target_temp'] - 1)
-                ctrl_air.enqueue(cmd_str)
-                conf.preset_dict['target_temp'] -= 1
-                print_date_msg('preset: {}'.format(conf.preset_dict['target_temp']))
+                cmd_str = 't_' + str(ac_ctrl.get_preset()['target_temp'] - 1)
+                ac_ctrl.enqueue(cmd_str)
+                print_date_msg('preset: {}'.format(ac_ctrl.get_preset()['target_temp']))
                                      
             elif now_temp + TEMP_DELTA < ctrl_temp:
-                cmd_str = 't_' + str(conf.preset_dict['target_temp'] + 1)
-                ctrl_air.enqueue(cmd_str)
-                conf.preset_dict['target_temp'] += 1
-                print_date_msg('preset: {}'.format(conf.preset_dict['target_temp']))
+                cmd_str = 't_' + str(ac_ctrl.get_preset()['target_temp'] + 1)
+                ac_ctrl.enqueue(cmd_str)
+                print_date_msg('preset: {}'.format(ac_ctrl.get_preset()['target_temp']))
 
         time.sleep(CTRL_DELAY)
 
@@ -201,18 +195,18 @@ def webapi_loop():
     
 def sw_initial_value(key, invert=False):
     if not invert:
-        return "selected" if conf.get_conf(key) == 'on' else ""
+        return "selected" if acc.get_conf(key) == 'on' else ""
     else:
-        return "selected" if conf.get_conf(key) == 'off' else ""
+        return "selected" if acc.get_conf(key) == 'off' else ""
 
     
 def return_preset():
     return {'alarm_sw_on' : sw_initial_value('alarm_on'),
             'alarm_sw_off': sw_initial_value('alarm_on', invert=True),
-            'alarm_time'  : conf.get_str_alarm_time(),
+            'alarm_time'  : acc.get_str_alarm_time(),
             'ctrl_sw_on'  : sw_initial_value('ctrl_on'),
             'ctrl_sw_off' : sw_initial_value('ctrl_on', invert=True),
-            'ctrl_temp'   : conf.get_conf('ctrl_temp')
+            'ctrl_temp'   : acc.get_conf('ctrl_temp')
     }
 
 
@@ -228,7 +222,7 @@ def post():
     try:
         time_list = request.form['alarm_time'].split(':')
         
-        t = conf.set_conf(alarm_on=request.form['alarm_sw'],
+        t = acc.set_conf(alarm_on=request.form['alarm_sw'],
                             alarm_time={
                                 'hour': int(time_list[0]),
                                 'minute': int(time_list[1])
@@ -237,7 +231,7 @@ def post():
                             ctrl_temp=int(request.form['ctrl_temp'])
         )
         if t:
-            conf.write_conf()
+            acc.write_conf()
         else:
             print_date_err('Missing update of conf')
         return render_template('index.html', preset=return_preset(), submit=True)
@@ -262,7 +256,7 @@ def get_values():
 # REST API for getting preset of aircon
 @app.route('/app/preset', methods=['GET'])
 def get_preset():
-    return jsonify(conf.preset_dict), 200
+    return jsonify(ac_ctrl.get_preset()), 200
 
 
 # REST API for posting commands to aircon directly
@@ -278,17 +272,17 @@ def post_ctrl():
     ctrls_queued = []
     for key, value in ctrls.items():
         if key == 'power':
-            result = ctrl_air.enqueue('p_' + value)
+            result = ac_ctrl.enqueue('p_' + value)
         elif key == 'target_temp':
-            result = ctrl_air.enqueue('t_' + str(value))
+            result = ac_ctrl.enqueue('t_' + str(value))
         elif key == 'wind_amount':
-            result = ctrl_air.enqueue('w_' + value)
+            result = ac_ctrl.enqueue('w_' + value)
         else:
             continue
 
         if result == True:
             ctrls_queued.append({key:value})
-            conf.preset_dict[key] = value
+            ac_ctrl.get_preset()[key] = value
         
     if not ctrls_queued:
         return 'Missing values', 400
@@ -313,15 +307,15 @@ def post_configurations():
     if not any(k in posted_confs.keys() for k in conf_type):
         return 'Missing values', 400
 
-    confs_previous = conf.get_all_conf()
+    confs_previous = acc.get_all_conf()
     for key, value in posted_confs.items():
-        conf.set_conf(key=value)
+        acc.set_conf(key=value)
         
-    conf.write_conf()
+    acc.write_conf()
 
     response = {'message': 'Confs are changed.',
                 'confs_previous': confs_previous,
-                'confs_now'     : conf.get_all_conf()}
+                'confs_now'     : acc.get_all_conf()}
     return jsonify(response), 201
 
 
@@ -334,9 +328,9 @@ if __name__ == '__main__':
     # Initialize GPIO, conf, bus, ctrl
     gpio.setwarnings(False)
     gpio.setmode(gpio.BCM)        # Use BCM GPIO numbers
-    conf = aaconf.AirAlarmConf()  # Load previous configurations
+    acc = ac.AlarmCtrlConf()      # Load previous configurations
+    ac_ctrl = ac.Controller()
     bus = smbus.SMBus(1)          # I2C bus shared by devices
-    ctrl_air = controller.CtrlAircon()
 
     # Sensor Initialization
     thermo = bme280.Thermo(bus)
@@ -373,7 +367,7 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         if DEBUG: print_date_msg("Keyboard Interrupt")
     finally:
-        conf.write_conf()
+        acc.write_conf()
         bus.close()
         lcd.display_messages(["Goodbye!", ""])
         time.sleep(1)
