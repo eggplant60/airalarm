@@ -11,6 +11,7 @@ import RPi.GPIO as gpio
 import smbus
 from flask import Flask, jsonify, request, render_template
 import requests
+import numpy as np
 
 
 # Private Library
@@ -23,9 +24,6 @@ import ac
 # Global variables
 DEBUG = False
 PIN_BACKLIGHT = raspi_lcd.PIN_BACKLIGHT
-LUX_SW_BL = 100    # [Lux], BL = Back Light
-LUX_SW_AIR = 50    # [Lux]
-LOG_FILE = '/home/naoya/airalarm/log.csv'
 
 
 #=========================================
@@ -48,39 +46,41 @@ def print_date_err(msg):
 #=========================================
 # Display information on LCD, and control its backlignt
 #=========================================
-
-def task_disp():
-    WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    
-    d = datetime.datetime.today()
-    # Get humidity, tempareture, pressure, lumino
-    hum_str = str(thermo.get_hum())[0:4]
-    tmp_str = str(thermo.get_tmp())[0:4]
-    prs_str = str(thermo.get_prs())[0:4]
-    lux_str = str(lumino.get_lux())[0:4]
-
-    if hum_str == '0.0' and tmp_str == '0.0':
-        hum_str = '--.-'
-        tmp_str = '--.-'
-
-    if acc.get_conf('alarm_on') == 'on':
-        alarm_str = '*'
-    else:
-        alarm_str = ' '
+class Task_disp():
+    def __init__(self):
+        self.week = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        self.lux_sw_bl = 100    # [Lux], BL = Back Light
         
-    # Generate strings for LCD
-    str1 = ' %02d:%02d:%02d %s%s' \
-           %(d.hour, d.minute, d.second, \
-             acc.get_str_alarm_time(), alarm_str)
-    str2 = ' %s %s %s' \
-           %(hum_str, tmp_str, prs_str)
-    lcd.display_messages([str1, str2])
+    def update(self):
+        d = datetime.datetime.today()
+        # Get humidity, tempareture, pressure, lumino
+        hum_str = str(thermo.get_hum())[0:4]
+        tmp_str = str(thermo.get_tmp())[0:4]
+        prs_str = str(thermo.get_prs())[0:4]
+        lux_str = str(lumino.get_lux())[0:4]
 
-    # Turn off backlight depending on luminous intensity
-    if lumino.get_lux() > LUX_SW_BL:
-        lcd.switch_backlight(True)
-    else:
-        lcd.switch_backlight(False)
+        if hum_str == '0.0' and tmp_str == '0.0':
+            hum_str = '--.-'
+            tmp_str = '--.-'
+
+        if acc.get_conf('alarm_on') == 'on':
+            alarm_str = '*'
+        else:
+            alarm_str = ' '
+        
+        # Generate strings for LCD
+        str1 = ' %02d:%02d:%02d %s%s' \
+               %(d.hour, d.minute, d.second, \
+                 acc.get_str_alarm_time(), alarm_str)
+        str2 = ' %s %s %s' \
+               %(hum_str, tmp_str, prs_str)
+        lcd.display_messages([str1, str2])
+
+        # Turn off backlight depending on luminous intensity
+        if lumino.get_lux() > self.lux_sw_bl:
+            lcd.switch_backlight(True)
+        else:
+            lcd.switch_backlight(False)
 
 
         
@@ -90,48 +90,62 @@ def task_disp():
 # Task 2. Turn up/down aircon depending on room temparature
 # Task 3. Power off aircon if it is dark
 #=========================================
-def task_ir():
-    
-    # Task 1
-    if acc.get_conf('alarm_on') == 'on':
-        d = datetime.datetime.today()
-        a_time = acc.get_conf('alarm_time')       
-        if d.hour == a_time['hour'] and d.minute == a_time['minute']:
-            ac_ctrl.enqueue('p_on')
-            acc.set_conf(alarm_on='off') # Clear flag
-            acc.write_conf()
-            print_date_msg("=== Power ON! ===")
+class Task_ir():
+    def __init__(self):
+        self.past_lux = lumino.get_lux()
+        self.lux_sw_air = 50    # [Lux]
+
+    def execute(self):
+        self.check_alarm()
+        self.check_lux()
+        ac_ctrl.dequeue_all(n_cmd=2) # execute commands
+
+    def check_alarm(self):
+        if acc.get_conf('alarm_on') == 'on':
+            d = datetime.datetime.today()
+            a_time = acc.get_conf('alarm_time')       
+            if d.hour == a_time['hour'] and d.minute == a_time['minute']:
+                mode.reset_history() # reset
+                ac_ctrl.enqueue('p_on')
+                acc.set_conf(alarm_on='off') # Clear flag
+                acc.write_conf()
+                print_date_msg("=== Power ON! ===")
 
     # Task 2
     # the commands are queued in ctrl_loop()
 
-    # Task 3
-    if lumino.get_lux() < LUX_SW_AIR and ac_ctrl.get_preset()['power'] == 'on':
-        ac_ctrl.enqueue('p_off')
-    elif lumino.get_lux() >= LUX_SW_AIR and ac_ctrl.get_preset()['power'] == 'off':
-        ac_ctrl.enqueue('p_on')
+    def check_lux(self):
+        if lumino.get_lux() < self.lux_sw_air and \
+           self.past_lux >= self.lux_sw_air:
+            ac_ctrl.enqueue('p_off')
+        elif lumino.get_lux() >= self.lux_sw_air and \
+             self.past_lux < self.lux_sw_air:
+            ac_ctrl.enqueue('p_on')
+        self.past_lux = lumino.get_lux()
 
-    ac_ctrl.dequeue_all() # execute commands
 
 
-    
-# first time, match the actual preset of aircon and the internal variables
-def match_preset_variables():
-    ac_ctrl.enqueue('p_on')
-    ac_ctrl.enqueue('t_' + str(acc.get_conf('ctrl_temp')+1))
-    ac_ctrl.enqueue('w_high')
-    ac_ctrl.dequeue_all(n_cmd=1) # execute commands
-    
+
 
 #=========================================
 # main loop
 #=========================================
 def main_loop():
     LOOP_DELAY = 0.1
-    match_preset_variables()    
+    
+    # first time, match the actual preset of aircon and the internal variables
+    def match_preset_variables():
+        ac_ctrl.enqueue('p_on')
+        ac_ctrl.enqueue('t_' + str(acc.get_conf('ctrl_temp')))
+        ac_ctrl.enqueue('w_low')
+        ac_ctrl.dequeue_all() # execute commands
+
+    match_preset_variables()
+    task_ir = Task_ir()
+    task_disp = Task_disp()
     while True:
-        task_ir()    # Send ir signal to aircon
-        task_disp()  # Display on LCD
+        task_ir.execute()    # Send ir signal to aircon
+        task_disp.update()   # Display on LCD
         time.sleep(LOOP_DELAY)
 
         
@@ -141,7 +155,8 @@ def main_loop():
 #=========================================
 def log_loop():
     LOG_DELAY = 600
-    time.sleep(10) # waiting for starting up devices 
+    LOG_FILE = '/home/naoya/airalarm/log.csv'
+    time.sleep(10) # waiting for starting up devices
     while True:
         print_date_msg('logging...')
         with open(LOG_FILE, 'a') as f:
@@ -160,28 +175,88 @@ def log_loop():
 # control loop
 #=========================================
 def ctrl_loop():
-    CTRL_DELAY = 300
-    TEMP_DELTA = 1.0
     time.sleep(10) # waiting for starting up devices
+    
     while True:
         if acc.get_conf('ctrl_on') == 'on' \
            and ac_ctrl.get_preset()['power'] == 'on':
-            print_date_msg('ctrl starts.')
-            ctrl_temp = acc.get_conf('ctrl_temp')
-            now_temp = thermo.get_tmp()
+            #print_date_msg('ctrl starts.')
+            mode.update_control()
             
-            if ctrl_temp + TEMP_DELTA < now_temp:
-                cmd_str = 't_' + str(ac_ctrl.get_preset()['target_temp'] - 1)
-                ac_ctrl.enqueue(cmd_str)
-                print_date_msg('preset: {}'.format(ac_ctrl.get_preset()['target_temp']))
-                                     
-            elif now_temp + TEMP_DELTA < ctrl_temp:
-                cmd_str = 't_' + str(ac_ctrl.get_preset()['target_temp'] + 1)
-                ac_ctrl.enqueue(cmd_str)
-                print_date_msg('preset: {}'.format(ac_ctrl.get_preset()['target_temp']))
+        time.sleep(mode.dt)
 
-        time.sleep(CTRL_DELAY)
+        
+class Ctrl_PID():
+    def __init__(self):
+        self.dt = 30
+        self.kf = 22.0/23.0 # gain ajustment is needed
+        self.kp = 0.8  # over 1.0 is NG
+        self.ki = 0.05
+        self.kd = 1.2
+        self.ek_sum = 0.0
+        self.ek_past = 0.0
+        self.update_cnt = 0
 
+    def update_control(self):
+        rk = acc.get_conf('ctrl_temp')
+        yk = thermo.get_tmp()
+        ek = rk - yk
+
+        if self.update_cnt % 2 == 1:
+            dek = ek - self.ek_past
+            uk = self.kf * rk + self.kp * ek \
+                 + self.ki * self.ek_sum + self.kd * dek
+            uk_clipped = np.clip(int(round(uk)), 18, 30)
+
+            with open('/home/naoya/airalarm/pi.csv', 'a') as f:
+                csv_line = datetime.datetime.today().strftime('%H:%M:%S')
+                csv_line +=  ', {}, {}, {}, {}, {}, {}, {}\n'.\
+                             format(rk,yk,ek,uk,uk_clipped, self.ek_sum, dek)
+                f.write(csv_line)
+
+            if uk_clipped != ac_ctrl.get_preset()['target_temp']:
+                cmd_str = 't_' + str(uk_clipped)
+                ac_ctrl.enqueue(cmd_str)
+                print_date_msg('preset: {}'.\
+                               format(ac_ctrl.get_preset()['target_temp']))
+                
+        self.ek_sum += ek
+        self.ek_past = ek
+        self.update_cnt += 1
+        if abs(self.ek_sum) > 100:
+            self.reset_history()
+
+    def reset_history(self):
+        self.ek_sum = 0.0
+        self.ek_past = 0.0
+
+        
+class Ctrl_UpDown():
+    def __init__(self):
+        self.dt = 60
+        self.delta_up = 1.0
+        self.delta_dn = 0.5
+
+    def update_control(self):
+        rk = acc.get_conf('ctrl_temp')
+        yk = thermo.get_tmp()
+            
+        if rk + self.delta_up <= yk:
+            uk = np.clip(ac_ctrl.get_preset()['target_temp'] - 1, 18, 30)            
+        elif yk + self.delta_dn <= rk:
+            uk = np.clip(ac_ctrl.get_preset()['target_temp'] + 1, 18, 30)
+        else:
+            uk = np.clip(ac_ctrl.get_preset()['target_temp'], 18, 30)
+
+        if uk != ac_ctrl.get_preset()['target_temp']:
+            cmd_str = 't_' + str(uk)
+            ac_ctrl.enqueue(cmd_str)
+            print_date_msg('preset: {}'.format(ac_ctrl.get_preset()['target_temp']))
+        
+        with open('/home/naoya/airalarm/updown.csv', 'a') as f:
+            csv_line = datetime.datetime.today().strftime('%H:%M:%S')
+            csv_line +=  ', {}, {}, {}\n'.format(rk, yk, uk)
+            f.write(csv_line)
         
 
 #=========================================
@@ -221,21 +296,20 @@ def index():
 def post():
     try:
         time_list = request.form['alarm_time'].split(':')
-        
         t = acc.set_conf(alarm_on=request.form['alarm_sw'],
-                            alarm_time={
-                                'hour': int(time_list[0]),
-                                'minute': int(time_list[1])
-                            },
-                            ctrl_on=request.form['ctrl_sw'],
-                            ctrl_temp=int(request.form['ctrl_temp'])
+                         alarm_time={
+                             'hour': int(time_list[0]),
+                             'minute': int(time_list[1])
+                         },
+                         ctrl_on=request.form['ctrl_sw'],
+                         ctrl_temp=int(request.form['ctrl_temp'])
         )
         if t:
             acc.write_conf()
         else:
             print_date_err('Missing update of conf')
         return render_template('index.html', preset=return_preset(), submit=True)
-                          
+
     except:
         return redirect(url_for('index'))
 
@@ -325,11 +399,12 @@ def post_configurations():
 #=========================================
 if __name__ == '__main__':
 
-    # Initialize GPIO, conf, bus, ctrl
+    # Initialize GPIO and so on.
     gpio.setwarnings(False)
     gpio.setmode(gpio.BCM)        # Use BCM GPIO numbers
     acc = ac.AlarmCtrlConf()      # Load previous configurations
     ac_ctrl = ac.Controller()
+    mode = Ctrl_PID()
     bus = smbus.SMBus(1)          # I2C bus shared by devices
 
     # Sensor Initialization

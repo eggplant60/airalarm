@@ -26,8 +26,8 @@ class Controller():
     def  __init__(self):
         self.work_dir = '/home/naoya/airalarm/ir'   
         self.__preset_dict = {'power' : 'on',
-                            'target_temp' : 25,
-                            'wind_amount' : 'high',
+                              'target_temp' : 25,
+                              'wind_amount' : 'low',
         }
         self.dict_cmd = {}
         for cmd in os.listdir(os.path.join(self.work_dir, 'data')):
@@ -56,7 +56,7 @@ class Controller():
             ret = False
         return ret
             
-    def dequeue_all(self, n_cmd=3):
+    def dequeue_all(self, n_cmd=2):
         while self.queue:
             cmd = self.queue.pop(0)
             self.send_ir(cmd, n_cmd)
