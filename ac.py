@@ -81,6 +81,7 @@ class AlarmCtrlConf:
                             'alarm_time': {'hour': 7, 'minute': 30},
                             'ctrl_on'   : 'off',
                             'ctrl_temp' : 24, # target temp
+                            'lux_on'    : 'off',
         }
         self.read_conf()        # Load previous configurations
 
@@ -125,7 +126,7 @@ class AlarmCtrlConf:
 
     # Check if args are valid
     def check_conf(self, dict_a):
-        if len(dict_a) != 4:
+        if len(dict_a) != 5:
             return False
 
         if dict_a['alarm_on'] != 'on' and dict_a['alarm_on'] != 'off':
@@ -150,6 +151,9 @@ class AlarmCtrlConf:
            18 <= dict_a['ctrl_temp'] <= 30:
             pass
         else:
+            return False
+
+        if dict_a['lux_on'] != 'on' and dict_a['lux_on'] != 'off':
             return False
 
         return True
@@ -184,21 +188,26 @@ if __name__ == '__main__':
 
     print('======= Class AlarmCtrlConf ======')
     print('1. Check read_conf()')
-    print(acc.get_conf('alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp'))
+    print(acc.get_conf('alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp', 'lux_on'))
+    print('')
 
     print('2. Check get_conf()')
     print(acc.get_conf('alarm_on'))
     print(acc.get_conf('alarm_time'))
+    print('')
 
     print('3. Check get_str_alarm_time()')
     print(acc.get_str_alarm_time())
+    print('')
 
     print('4. Chech set_conf()')
-    print(acc.set_conf(alarm_time={'hour':7, 'minute':30}, alarm_on='on', ctrl_temp=24))
-    print(acc.get_conf('alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp'))
+    print(acc.set_conf(alarm_time={'hour':7, 'minute':30}, alarm_on='on', ctrl_temp=24, lux_on='off'))
+    print(acc.get_conf('alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp', 'lux_on'))
+    print('')
 
-    # print('5. Chech write_conf()')
-    # print(acc.write_conf())
+    print('5. Chech write_conf()')
+    print(acc.write_conf())
+    print('')
 
     print('======= Class Controller ======')
     print(ac_ctrl.get_preset())

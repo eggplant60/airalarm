@@ -44,6 +44,16 @@ def print_date_err(msg):
 
     
 #=========================================
+# After the script start, match the actual preset of aircon
+# and the internal variables.
+#=========================================
+def match_preset_variables():
+    ac_ctrl.enqueue('p_on')
+    ac_ctrl.enqueue('t_' + str(acc.get_conf('ctrl_temp')))
+    ac_ctrl.enqueue('w_low')
+
+    
+#=========================================
 # Display information on LCD, and control its backlignt
 #=========================================
 class Task_disp():
@@ -101,28 +111,36 @@ class Task_ir():
         ac_ctrl.dequeue_all(n_cmd=2) # execute commands
 
     def check_alarm(self):
-        if acc.get_conf('alarm_on') == 'on':
-            d = datetime.datetime.today()
-            a_time = acc.get_conf('alarm_time')       
-            if d.hour == a_time['hour'] and d.minute == a_time['minute']:
-                mode.reset_history() # reset
-                ac_ctrl.enqueue('p_on')
-                acc.set_conf(alarm_on='off') # Clear flag
-                acc.write_conf()
-                print_date_msg("=== Power ON! ===")
+        if acc.get_conf('alarm_on') == 'off':
+            return
+        d = datetime.datetime.today()
+        a_time = acc.get_conf('alarm_time')
+        if d.hour == a_time['hour'] and d.minute == a_time['minute']:
+            mode.reset_history() # reset
+            #ac_ctrl.enqueue('p_on')
+            self.power_on_set_temp()
+            acc.set_conf(alarm_on='off') # Clear flag
+            acc.write_conf()
+            print_date_msg("=== Power ON! ===")
 
     # Task 2
     # the commands are queued in ctrl_loop()
 
     def check_lux(self):
+        if acc.get_conf('lux_on') == 'off':
+            return
         if lumino.get_lux() < self.lux_sw_air and \
            self.past_lux >= self.lux_sw_air:
             ac_ctrl.enqueue('p_off')
         elif lumino.get_lux() >= self.lux_sw_air and \
              self.past_lux < self.lux_sw_air:
-            ac_ctrl.enqueue('p_on')
+            #ac_ctrl.enqueue('p_on') # issue: preset temp in AC is reset
+            self.power_on_set_temp()
         self.past_lux = lumino.get_lux()
 
+    def power_on_set_temp(self):
+        ac_ctrl.enqueue('p_on')
+        ac_ctrl.enqueue('t_' + str(acc.get_conf('ctrl_temp'))) # work around
 
 
 
@@ -132,15 +150,8 @@ class Task_ir():
 #=========================================
 def main_loop():
     LOOP_DELAY = 0.1
-    
-    # first time, match the actual preset of aircon and the internal variables
-    def match_preset_variables():
-        ac_ctrl.enqueue('p_on')
-        ac_ctrl.enqueue('t_' + str(acc.get_conf('ctrl_temp')))
-        ac_ctrl.enqueue('w_low')
-        ac_ctrl.dequeue_all() # execute commands
-
     match_preset_variables()
+    ac_ctrl.dequeue_all() # execute commands
     task_ir = Task_ir()
     task_disp = Task_disp()
     while True:
@@ -148,7 +159,7 @@ def main_loop():
         task_disp.update()   # Display on LCD
         time.sleep(LOOP_DELAY)
 
-        
+
 
 #=========================================
 # logging loop
@@ -240,9 +251,9 @@ class Ctrl_UpDown():
     def update_control(self):
         rk = acc.get_conf('ctrl_temp')
         yk = thermo.get_tmp()
-            
+        
         if rk + self.delta_up <= yk:
-            uk = np.clip(ac_ctrl.get_preset()['target_temp'] - 1, 18, 30)            
+            uk = np.clip(ac_ctrl.get_preset()['target_temp'] - 1, 18, 30)
         elif yk + self.delta_dn <= rk:
             uk = np.clip(ac_ctrl.get_preset()['target_temp'] + 1, 18, 30)
         else:
@@ -281,7 +292,9 @@ def return_preset():
             'alarm_time'  : acc.get_str_alarm_time(),
             'ctrl_sw_on'  : sw_initial_value('ctrl_on'),
             'ctrl_sw_off' : sw_initial_value('ctrl_on', invert=True),
-            'ctrl_temp'   : acc.get_conf('ctrl_temp')
+            'ctrl_temp'   : acc.get_conf('ctrl_temp'),
+            'lux_sw_on'  : sw_initial_value('lux_on'),
+            'lux_sw_off' : sw_initial_value('lux_on', invert=True),
     }
 
 
@@ -302,7 +315,8 @@ def post():
                              'minute': int(time_list[1])
                          },
                          ctrl_on=request.form['ctrl_sw'],
-                         ctrl_temp=int(request.form['ctrl_temp'])
+                         ctrl_temp=int(request.form['ctrl_temp']),
+                         lux_on=request.form['lux_sw'],
         )
         if t:
             acc.write_conf()
@@ -377,7 +391,7 @@ def post_configurations():
     posted_confs = request.json
 
     # Check that the required fields are in the POST'ed data
-    conf_type = ['alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp']
+    conf_type = ['alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp', 'lux_on']
     if not any(k in posted_confs.keys() for k in conf_type):
         return 'Missing values', 400
 
