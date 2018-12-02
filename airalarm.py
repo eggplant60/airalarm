@@ -59,7 +59,7 @@ def match_preset_variables():
 class Task_disp():
     def __init__(self):
         self.week = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        self.lux_sw_bl = 100    # [Lux], BL = Back Light
+        self.lux_sw_bl = 50    # [Lux], BL = Back Light
         
     def update(self):
         d = datetime.datetime.today()
@@ -428,7 +428,7 @@ if __name__ == '__main__':
     # LCD Initialization
     lcd = raspi_lcd.LCDController(bus, PIN_BACKLIGHT)
     lcd.initialize_display()
-    lcd.display_messages(["RasbperryPi Zero", "Air Alarm"])
+    lcd.display_messages(["RaspberryPi Zero", "Air Alarm"])
     time.sleep(1)
     
     if DEBUG:
