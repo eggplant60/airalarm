@@ -26,23 +26,26 @@ DEBUG = False
 PIN_BACKLIGHT = raspi_lcd.PIN_BACKLIGHT
 
 
+def now_str(short=False):
+    if not short:
+        return datetime.datetime.today().strftime('%Y-%m-%dT%H:%M:%S')
+    else:
+        return datetime.datetime.today().strftime('%H:%M:%S')
+
 #=========================================
 # Print a message with time
 #=========================================
 def print_date_msg(msg):
-    d = datetime.datetime.today()
-    print d.strftime('%Y/%m/%d %H:%M:%S') + ' [MAIN] ' + msg
+    print(now_str + ' [MAIN] ' + msg)
 
-    
+
 #=========================================
 # Print an error with time
 #=========================================
 def print_date_err(msg):
-    d = datetime.datetime.today()
-    sys.stderr.write(d.strftime('%Y/%m/%d %H:%M:%S') \
-                     + ' [MAIN] ' + msg + '\n')
+    sys.stderr.write(now_str() + ' [MAIN] ' + msg + '\n')
 
-    
+
 #=========================================
 # After the script start, match the actual preset of aircon
 # and the internal variables.
@@ -52,7 +55,7 @@ def match_preset_variables():
     ac_ctrl.enqueue('t_' + str(acc.get_conf('ctrl_temp')))
     ac_ctrl.enqueue('w_low')
 
-    
+
 #=========================================
 # Display information on LCD, and control its backlignt
 #=========================================
@@ -73,27 +76,20 @@ class Task_disp():
             hum_str = '--.-'
             tmp_str = '--.-'
 
-        if acc.get_conf('alarm_on') == 'on':
-            alarm_str = '*'
-        else:
-            alarm_str = ' '
-        
+        alarm_str = '*' if acc.get_conf('alarm_on') == 'on' else ' '
+
         # Generate strings for LCD
-        str1 = ' %02d:%02d:%02d %s%s' \
+        row1 = ' %02d:%02d:%02d %s%s' \
                %(d.hour, d.minute, d.second, \
                  acc.get_str_alarm_time(), alarm_str)
-        str2 = ' %s %s %s' \
+        row2 = ' %s %s %s' \
                %(hum_str, tmp_str, prs_str)
-        lcd.display_messages([str1, str2])
+        lcd.display_messages([row1, row2])
 
         # Turn off backlight depending on luminous intensity
-        if lumino.get_lux() > self.lux_sw_bl:
-            lcd.switch_backlight(True)
-        else:
-            lcd.switch_backlight(False)
+        lcd.switch_backlight(lumino.get_lux() > self.lux_sw_bl)
 
 
-        
 #=========================================
 # Send Ir signals to aircon
 # Task 1. Power on aircon if it is alarm time
@@ -143,8 +139,6 @@ class Task_ir():
         ac_ctrl.enqueue('t_' + str(acc.get_conf('ctrl_temp'))) # work around
 
 
-
-
 #=========================================
 # main loop
 #=========================================
@@ -160,7 +154,6 @@ def main_loop():
         time.sleep(LOOP_DELAY)
 
 
-
 #=========================================
 # logging loop
 #=========================================
@@ -169,34 +162,33 @@ def log_loop():
     LOG_FILE = '/home/naoya/airalarm/log.csv'
     time.sleep(10) # waiting for starting up devices
     while True:
-        print_date_msg('logging...')
+        # 出力が多すぎるので抑制
+        #print_date_msg('logging...')
         with open(LOG_FILE, 'a') as f:
-            str_list = [datetime.datetime.today().strftime('%Y-%m-%dT%H:%M:%S')]
-            str_list.append( str(thermo.get_hum())[0:6] )
-            str_list.append( str(thermo.get_tmp())[0:6] )
-            str_list.append( str(thermo.get_prs())[0:6] )
-            str_list.append( str(lumino.get_lux())[0:6] )
-            line = ','.join(str_list) + '\n'
+            line = ','.join([now_str(),
+                             str(thermo.get_hum())[0:6],
+                             str(thermo.get_tmp())[0:6],
+                             str(thermo.get_prs())[0:6],
+                             str(lumino.get_lux())[0:6],
+                         ]) + '\n'
             f.write(line)
         time.sleep(LOG_DELAY)
 
 
-        
 #=========================================
 # control loop
 #=========================================
 def ctrl_loop():
     time.sleep(10) # waiting for starting up devices
-    
     while True:
         if acc.get_conf('ctrl_on') == 'on' \
            and ac_ctrl.get_preset()['power'] == 'on':
             #print_date_msg('ctrl starts.')
             mode.update_control()
-            
+        
         time.sleep(mode.dt)
 
-        
+
 class Ctrl_PID():
     def __init__(self):
         self.dt = 30
@@ -265,10 +257,9 @@ class Ctrl_UpDown():
             print_date_msg('preset: {}'.format(ac_ctrl.get_preset()['target_temp']))
         
         with open('/home/naoya/airalarm/updown.csv', 'a') as f:
-            csv_line = datetime.datetime.today().strftime('%H:%M:%S')
-            csv_line +=  ', {}, {}, {}\n'.format(rk, yk, uk)
+            csv_line = now_str() +  ', {}, {}, {}\n'.format(rk, yk, uk)
             f.write(csv_line)
-        
+
 
 #=========================================
 # Web API
@@ -278,14 +269,14 @@ app = Flask(__name__)
 def webapi_loop():
     app.run(host='192.168.11.204', port=80)
 
-    
+
 def sw_initial_value(key, invert=False):
     if not invert:
         return "selected" if acc.get_conf(key) == 'on' else ""
     else:
         return "selected" if acc.get_conf(key) == 'off' else ""
 
-    
+
 def return_preset():
     return {'alarm_sw_on' : sw_initial_value('alarm_on'),
             'alarm_sw_off': sw_initial_value('alarm_on', invert=True),
