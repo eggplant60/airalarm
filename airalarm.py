@@ -12,14 +12,14 @@ import smbus
 from flask import Flask, jsonify, request, render_template
 import requests
 import numpy as np
-
+import psycopg2
 
 # Private Library
 import bme280
 import raspi_lcd
 import tsl2561
 import ac
-
+from copy_from_csv import get_connection
 
 # Global variables
 DEBUG = False
@@ -158,13 +158,28 @@ def main_loop():
 # logging loop
 #=========================================
 def log_loop():
-    LOG_DELAY = 600
-    LOG_FILE = '/home/naoya/airalarm/log.csv'
+    log_delay = 600
+    log_file  = '/home/naoya/airalarm/log.csv' # DBに登録できなかったときの予備
+    table_name = 'environment'
     time.sleep(10) # waiting for starting up devices
-    while True:
-        # 出力が多すぎるので抑制
-        #print_date_msg('logging...')
-        with open(LOG_FILE, 'a') as f:
+
+    def insert_log(table_name):
+        with get_connection() as con:
+            with con.cursor() as cur:
+                sql = "INSERT INTO " + table_name + \
+                      """ (date,humidity,temperature,pressure,illuminance) 
+                          VALUES(%s, %s, %s, %s, %s)"""
+                cur.execute(sql,
+                            (datetime.datetime.today(),
+                             thermo.get_hum(),
+                             thermo.get_tmp(),
+                             thermo.get_prs(),
+                             lumino.get_lux())
+                )
+                con.commit()
+
+    def write_log(log_file):
+        with open(log_file, 'a') as f:
             line = ','.join([now_str(),
                              str(thermo.get_hum())[0:6],
                              str(thermo.get_tmp())[0:6],
@@ -172,7 +187,14 @@ def log_loop():
                              str(lumino.get_lux())[0:6],
                          ]) + '\n'
             f.write(line)
-        time.sleep(LOG_DELAY)
+
+    while True:
+        #print_date_msg('logging...') # 出力が多すぎるので抑制
+        try:
+            insert_log(table_name)
+        except:
+            write_log(log_file)
+        time.sleep(log_delay)
 
 
 #=========================================
