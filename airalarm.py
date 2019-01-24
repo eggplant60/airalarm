@@ -36,7 +36,7 @@ def now_str(short=False):
 # Print a message with time
 #=========================================
 def print_date_msg(msg):
-    print(now_str + ' [MAIN] ' + msg)
+    print(now_str() + ' [MAIN] ' + msg)
 
 
 #=========================================
