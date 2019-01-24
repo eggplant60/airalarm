@@ -2,3 +2,4 @@ aa.*
 ir/data*
 *.pyc
 *.csv*
+postgres.py
