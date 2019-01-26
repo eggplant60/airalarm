@@ -5,7 +5,7 @@
 
 ## 概要
 
-***「寒い冬、朝起きるときに暖房がついていたらいいな」***という想いを形にしました。
+*「寒い冬、朝起きるときに暖房がついていたらいいな」* という想いを形にしました。
 
 Raspberry Pi Zero に以下の機能を実装しました。
 
@@ -42,19 +42,19 @@ http://i0.wp.com/daisuke-ogura.ciao.jp/wp-content/uploads/2016/04/Zero_pin1.jpg
 
 ## インストール
 
-0. ダウンロード
+0. ダウンロード  
    `git clone https://github.com/eggplant60/airalarm.git`
 
-1. ライブラリのインストール
+1. ライブラリのインストール  
 	`sudo apt-get install python.rpi.gpio i2c-tools python-smbus apache2`
 
-2. I2Cの有効化
+2. I2Cの有効化  
    参考: http://yura2.hateblo.jp/entry/2016/02/13/Raspberry_Pi%E3%81%AB%E6%8E%A5%E7%B6%9A%E3%81%97%E3%81%9FLCD(ACM1602NI)%E3%82%92Python%E3%81%A7%E5%8B%95%E3%81%8B%E3%81%99
 
-3. 赤外線モジュールの設定と登録
+3. 赤外線モジュールの設定と登録  
    参考: https://qiita.com/ww24/items/32d2a78c20e6dcc2e68c
 
-4. Supervisorへの登録
+4. Supervisorへの登録  
    参考: https://papix.hatenablog.com/entry/2015/08/05/131113
 
 
