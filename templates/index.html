@@ -16,42 +16,44 @@
       <div>
 		<p>アラーム機能:
 		  <select name="alarm_sw">
-			<option value="on" {{ preset.alarm_sw_on }}>ON</option>
-			<option value="off" {{ preset.alarm_sw_off }}>OFF</option>
+			<option value="on" {{ preset.alarm_on }}>ON</option>
+			<option value="off" {{ preset.alarm_off }}>OFF</option>
 		  </select>
 		</p>
 		<p>
 		  設定時刻: <input name="alarm_time" type="time" style="width:80px" value={{ preset.alarm_time }}>
 		</p>
+		<p>アラームウィンドウ:
+		  <input name="alarm_window", type="number" min="0" max="60" step="1" value={{ preset.alarm_window }}>
+		</p>
       </div>
       <Hr Width="100%">
       <!-- ------------------------------------------ -->
 
-      <div>
-		<p>温度調整機能: 
-		  <select name="ctrl_sw">
-			<option value="on" {{ preset.ctrl_sw_on }}>ON</option>
-			<option value="off" {{ preset.ctrl_sw_off }}>OFF</option>
-		  </select>
-		</p>
-		<p>
-		  設定温度: <input name="ctrl_temp" type="number" style="width:40px" value={{ preset.ctrl_temp }}>
-        </p>
-      </div>
-      <Hr Width="100%">
+      <!-- <div> -->
+	  <!-- 	<p>温度調整機能:  -->
+	  <!-- 	  <select name="ctrl_sw"> -->
+	  <!-- 		<option value="on" {{ preset.ctrl_sw_on }}>ON</option> -->
+	  <!-- 		<option value="off" {{ preset.ctrl_sw_off }}>OFF</option> -->
+	  <!-- 	  </select> -->
+	  <!-- 	</p> -->
+	  <!-- 	<p> -->
+	  <!-- 	  設定温度: <input name="ctrl_temp" type="number" style="width:40px" value={{ preset.ctrl_temp }}> -->
+      <!--   </p> -->
+      <!-- </div> -->
+      <!-- <Hr Width="100%"> -->
       <!-- ------------------------------------------ -->      
 
-      <div>
-		<p>照明連動機能: 
-		  <select name="lux_sw">
-			<option value="on" {{ preset.lux_sw_on }}>ON</option>
-			<option value="off" {{ preset.lux_sw_off }}>OFF</option>
-		  </select>
-		</p>
-      </div>
-      <Hr Width="100%">
+      <!-- <div> -->
+	  <!-- 	<p>照明連動機能:  -->
+	  <!-- 	  <select name="lux_sw"> -->
+	  <!-- 		<option value="on" {{ preset.lux_sw_on }}>ON</option> -->
+	  <!-- 		<option value="off" {{ preset.lux_sw_off }}>OFF</option> -->
+	  <!-- 	  </select> -->
+	  <!-- 	</p> -->
+      <!-- </div> -->
+      <!-- <Hr Width="100%"> -->
       <!-- ------------------------------------------ -->      
-
 
       <div align="right">
 		{% if submit %}

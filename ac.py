@@ -8,214 +8,155 @@ import datetime
 import json
 import copy
 
-DEBUG = False
+DEBUG = True
 
 #=========================================
 # Print a message with time
 #=========================================
 def print_date_msg(msg):
-    d = datetime.datetime.today()
-    print d.strftime('%Y/%m/%d %H:%M:%S') + ' [AC  ] ' + msg
+    if DEBUG:
+        d = datetime.datetime.today()
+        print d.strftime('%Y/%m/%d %H:%M:%S') + ' [AC  ] ' + msg
 
 
 #=========================================
-# Class to send signals to the AC
+# Class to send signals to AC or Light
 #=========================================
 class Controller():
 
     def  __init__(self):
-        self.work_dir = '/home/naoya/airalarm/ir'   
-        self.__preset_dict = {'power' : 'on',
-                              'target_temp' : 25,
-                              'wind_amount' : 'low',
-        }
-        self.dict_cmd = {}
-        for cmd in os.listdir(os.path.join(self.work_dir, 'data')):
-            self.dict_cmd[cmd] = './send.sh data/{} > /dev/null'.format(cmd)   
-        self.queue = []
+        self.command_str = '/usr/bin/irsend -#{} SEND_ONCE {} {}'
 
-    def get_preset(self):
-        return self.__preset_dict
-        
-    def enqueue(self, cmd):
+    def send_ir(self, target, command, n=1):
+        cmd = self.command_str.format(n, target, command)
         try:
-            self.queue.append(self.dict_cmd[cmd])
-            if cmd[:2] == 'p_':
-                self.__preset_dict['power'] = cmd[2:]
-                if DEBUG: print(self.__preset_dict['power'])
-            elif cmd[:2] == 't_':
-                self.__preset_dict['target_temp'] = int(cmd[2:])
-                if DEBUG: print(self.__preset_dict['target_temp'])
-            elif cmd[:2] == 'w_':
-                self.__preset_dict['wind_amount'] = cmd[2:]
-                if DEBUG: print(self.__preset_dict['wind_amount'])
-            ret = True
-            
+            subprocess.call(cmd, shell=True)
+            print_date_msg('executed'.format(cmd))
         except:
-            print_date_msg('This command does not exist.')
-            ret = False
-        return ret
-            
-    def dequeue_all(self, n_cmd=2):
-        while self.queue:
-            cmd = self.queue.pop(0)
-            self.send_ir(cmd, n_cmd)
-            print_date_msg('{} will be executed...'.format(cmd))
-            
-    def send_ir(self, cmd, n_cmd):
-        for _ in range(n_cmd):
-            time.sleep(0.5)
-            subprocess.call(cmd, shell=True, cwd=self.work_dir)
+            print_date_msg('Error: {}'.format(cmd))
 
 
 
 #=========================================
 # Class to handle configuration files
 #=========================================
-class AlarmCtrlConf:
+class Configuration():
     def __init__(self):
         self.conf_file = '/etc/airalarm.conf'     # general configuration file
-        # Initialize variables
+        self.default_values = {"alarm_on": False,
+                               "alarm_time": {
+                                   "hour": 7,
+                                   "minute": 30
+                               },
+                               "alarm_window": 30
+                           }
+        self.conf_values = self.read_conf() # Load previous configurations
 
-        self.__conf_dict = {'alarm_on'  : 'off',
-                            'alarm_time': {'hour': 7, 'minute': 30},
-                            'ctrl_on'   : 'off',
-                            'ctrl_temp' : 24, # target temp
-                            'lux_on'    : 'off',
-        }
-        self.read_conf()        # Load previous configurations
-
-    # Usage: v1, v2, ... = get_conf('key1', 'key2', ...)
-    def get_conf(self, *keys):
-        ret_list = []
-        for key in keys:
-            try:
-                ret_list.append(self.__conf_dict[key])
-            except:
-                print_date_msg('Missing keys.')
-                return None
-
-        if len(ret_list) == 1:
-            return ret_list[0]
-        else:
-            return ret_list
-
-    # Return Example: "08:00"
-    def get_str_alarm_time(self):
-        hour_str = str(self.__conf_dict['alarm_time']['hour']).zfill(2)
-        minute_str = str(self.__conf_dict['alarm_time']['minute']).zfill(2)
-        return hour_str + ':' + minute_str
-    
-    def get_all_conf(self):
-        return self.__conf_dict
-
-    # Usage: get_conf(key1=value1, key2=value2, ...)
-    def set_conf(self, **kwargs):
-        temp_dict = copy.deepcopy(self.__conf_dict)
+    def read_conf(self):
         try:
-            for key, value in kwargs.items():
-                temp_dict[key] = value
+            with open(self.conf_file, 'r') as f:
+                conf_values = json.load(f)
+                if self.is_valid_values(conf_values):
+                    return conf_values
+                else:
+                    print_date_msg("Invalid values")
+                    return self.defalut_values
         except:
+            print_date_msg("Read Error: " + self.conf_file)
+            return self.default_values
+
+    def write_conf(self):
+        try:
+            with open(self.conf_file, 'w') as f:
+                json.dump(self.conf_values, f,
+                          ensure_ascii=False, indent=4,
+                          sort_keys=True, separators=(',', ': '))
+                return True
+        except:
+            print_date_msg("Write Error: " + self.conf_file)
             return False
 
-        if not self.check_conf(temp_dict):
-            return False
+    def get_conf(self):
+        return self.conf_values
 
-        self.__conf_dict = copy.deepcopy(temp_dict)
-        return True
+    def set_conf(self, **kargs):
+        tmp_values = copy.deepcopy(self.conf_values)
+        for key, value in kargs.items():
+            tmp_values[key] = value
+        is_valid = self.is_valid_values(tmp_values)
+        print(tmp_values)
+        if is_valid:
+            self.conf_values = tmp_values
+            return True
+        else:
+            return False
 
     # Check if args are valid
-    def check_conf(self, dict_a):
-        if len(dict_a) != 5:
+    def is_valid_values(self, dict_a):
+        if len(dict_a) != 3:
             return False
 
-        if dict_a['alarm_on'] != 'on' and dict_a['alarm_on'] != 'off':
+        if not isinstance(dict_a['alarm_on'], bool):
             return False
-        
+
         if isinstance(dict_a['alarm_time']['hour'], int) and \
            0 <= dict_a['alarm_time']['hour'] <= 23:
             pass
         else:
             return False
-        
+
         if isinstance(dict_a['alarm_time']['minute'], int) and \
            0 <= dict_a['alarm_time']['minute'] <= 59:
             pass
         else:
             return False
 
-        if dict_a['ctrl_on'] != 'on' and dict_a['ctrl_on'] != 'off':
-            return False
-
-        if isinstance(dict_a['ctrl_temp'], int) and \
-           18 <= dict_a['ctrl_temp'] <= 30:
+        if isinstance(dict_a['alarm_window'], int) and \
+           0 <= dict_a['alarm_window'] <= 59:
             pass
         else:
             return False
 
-        if dict_a['lux_on'] != 'on' and dict_a['lux_on'] != 'off':
-            return False
-
         return True
-                 
-    # Load previous __conf_dict at start up
-    def read_conf(self):
-        try:
-            with open(self.conf_file, 'r') as f:
-                temp_dict = json.load(f)                
-                if not self.check_conf(temp_dict):
-                    raise
-                self.__conf_dict = copy.deepcopy(temp_dict)
-        except:
-            print_date_msg("Read Error: " + self.conf_file)
 
-    # Write __conf_dict when values are changed
-    def write_conf(self):
-        
-        try:
-            with open(self.conf_file, 'w') as f:
-                json.dump(self.__conf_dict, f,
-                          ensure_ascii=False, indent=4,
-                          sort_keys=True, separators=(',', ': '))
-        except:
-            print_date_msg("Write Error: " + self.conf_file)
+    # Return Example: "08:00"
+    def get_str_alarm_time(self):
+        tmp_time = self.conf_values['alarm_time']
+        hour_str = str(tmp_time['hour']).zfill(2)
+        minute_str = str(tmp_time['minute']).zfill(2)
+        return hour_str + ':' + minute_str
 
 
 
 if __name__ == '__main__':
-    acc = AlarmCtrlConf()
-    ac_ctrl = Controller()
+    conf = Configuration()
+    ctrl = Controller()
 
-    print('======= Class AlarmCtrlConf ======')
-    print('1. Check read_conf()')
-    print(acc.get_conf('alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp', 'lux_on'))
+    print('======= Class Configuration ======')
+    print('1. Check get_conf()')
+    print(conf.get_conf())
     print('')
 
-    print('2. Check get_conf()')
-    print(acc.get_conf('alarm_on'))
-    print(acc.get_conf('alarm_time'))
+    print('2. Check get_str_alarm_time()')
+    print(conf.get_str_alarm_time())
     print('')
 
-    print('3. Check get_str_alarm_time()')
-    print(acc.get_str_alarm_time())
-    print('')
-
-    print('4. Chech set_conf()')
-    print(acc.set_conf(alarm_time={'hour':7, 'minute':30}, alarm_on='on', ctrl_temp=24, lux_on='off'))
-    print(acc.get_conf('alarm_on', 'alarm_time', 'ctrl_on', 'ctrl_temp', 'lux_on'))
+    print('3. Chech set_conf()')
+    print(conf.set_conf(alarm_time={'hour':11, 'minute':00}, alarm_window=5))
+    print(conf.get_conf())
     print('')
 
     print('5. Chech write_conf()')
-    print(acc.write_conf())
+    print(conf.write_conf())
     print('')
 
     print('======= Class Controller ======')
-    print(ac_ctrl.get_preset())
-    ac_ctrl.enqueue('p_on')
-    ac_ctrl.enqueue('p_a')
-    ac_ctrl.enqueue('w_high')
-    print(ac_ctrl.get_preset())
-    ac_ctrl.dequeue_all()
-    
-    
+    ctrl.send_ir('light', 'switch')
+    # print(ctrl.get_preset())
+    # ctrl.enqueue('p_on')
+    # ctrl.enqueue('p_a')
+    # ctrl.enqueue('w_high')
+    # print(ac_ctrl.get_preset())
+    #ac_ctrl.dequeue_all()
+
 #================== EOF =========================
