@@ -5,7 +5,7 @@
 
 ## 概要
 
-__「寒い冬、朝起きるときに暖房がついていたらいいな」__という想いを形にしました。
+***「寒い冬、朝起きるときに暖房がついていたらいいな」***という想いを形にしました。
 
 Raspberry Pi Zero に以下の機能を実装しました。
 
@@ -32,11 +32,10 @@ http://i0.wp.com/daisuke-ogura.ciao.jp/wp-content/uploads/2016/04/Zero_pin1.jpg
 - 半固定抵抗(10kΩ)
 - 温湿度センサ BME280
 - 照度センサ TSL2561
-- 赤外線LED OSI5LA5113A
+- 赤外線LED OSI5LAFU5111C-40
 - 赤外線受光モジュール PL-IRM2161-XD1
-- MOSFET 2SK4150TZ-E x2
-- 抵抗(10kΩ x2, 20Ω x1)
-- LED光拡散キャップ
+- MOSFET IRLU3410PBF x2
+- 抵抗(100 x2, 100 x2, 33 x1)
 
 その他、SDカード、Micro USBケーブル、ブレッドボード、ジャンパワイヤなど
 
@@ -52,9 +51,10 @@ http://i0.wp.com/daisuke-ogura.ciao.jp/wp-content/uploads/2016/04/Zero_pin1.jpg
 2. I2Cの有効化
    参考: http://yura2.hateblo.jp/entry/2016/02/13/Raspberry_Pi%E3%81%AB%E6%8E%A5%E7%B6%9A%E3%81%97%E3%81%9FLCD(ACM1602NI)%E3%82%92Python%E3%81%A7%E5%8B%95%E3%81%8B%E3%81%99
 
-3. Webアプリの設定
+3. 赤外線モジュールの設定と登録
+   参考: https://qiita.com/ww24/items/32d2a78c20e6dcc2e68c
 
 4. Supervisorへの登録
+   参考: https://papix.hatenablog.com/entry/2015/08/05/131113
 
 
-## 参考URL
