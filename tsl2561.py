@@ -7,7 +7,7 @@ import datetime
 import threading
 
 address = 0x39 # 0100101(7bit,0x39)
-READ_INT = 5   # [sec], each reading interval is to be grater than 2 sec
+READ_INT = 2   # [sec], each reading interval is to be grater than 2 sec
 LOG_INT = 600  # [sec]
 DEBUG = False
 
