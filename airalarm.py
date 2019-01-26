@@ -4,20 +4,18 @@
 import time
 import datetime
 import sys
-import subprocess
 import threading
+#import signal
 
 import RPi.GPIO as gpio
 import smbus
 from flask import Flask, jsonify, request, render_template
-import requests
 import numpy as np
-import psycopg2
+import psycopg2   # handle PostgreSQL
 
 # Private Library
-import bme280
+from sensors import Sensors
 import raspi_lcd
-import tsl2561
 import ac
 from copy_from_csv import get_connection
 
@@ -26,22 +24,20 @@ DEBUG = False
 PIN_BACKLIGHT = raspi_lcd.PIN_BACKLIGHT
 
 
+#=========================================
+# Print a message with time
+#=========================================
 def now_str(short=False):
     if not short:
         return datetime.datetime.today().strftime('%Y-%m-%dT%H:%M:%S')
     else:
         return datetime.datetime.today().strftime('%H:%M:%S')
 
-#=========================================
-# Print a message with time
-#=========================================
+
 def print_date_msg(msg):
     print(now_str() + ' [MAIN] ' + msg)
 
 
-#=========================================
-# Print an error with time
-#=========================================
 def print_date_err(msg):
     sys.stderr.write(now_str() + ' [MAIN] ' + msg + '\n')
 
@@ -62,44 +58,46 @@ def match_preset_variables():
 class Task_disp():
     def __init__(self):
         self.week = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-        self.lux_sw_bl = 50    # [Lux], BL = Back Light
-        
-    def update(self):
-        d = datetime.datetime.today()
-        # Get humidity, tempareture, pressure, lumino
-        hum_str = str(thermo.get_hum())[0:4]
-        tmp_str = str(thermo.get_tmp())[0:4]
-        prs_str = str(thermo.get_prs())[0:4]
-        lux_str = str(lumino.get_lux())[0:4]
+        self.lux_sw_bl = 50.0    # [Lux], BL = Back Light
 
-        if hum_str == '0.0' and tmp_str == '0.0':
-            hum_str = '--.-'
-            tmp_str = '--.-'
+    def float2str4(self, value):
+        if value == 0.0:
+            return '--.-'
+        else:
+            return str(value)[0:4]
+
+    def update(self):
+        # Get datetime, humidity, temperature, pressure, illuminance
+        values = sensors.get_values()
+        time    = values["date"]
+        hum_str, tmp_str, prs_str, lux_str = (self.float2str4(values[key]) \
+                                              for key in ["humidity",
+                                                          "temperature",
+                                                          "pressure",
+                                                          "illuminance"])
 
         alarm_str = '*' if acc.get_conf('alarm_on') == 'on' else ' '
 
         # Generate strings for LCD
         row1 = ' %02d:%02d:%02d %s%s' \
-               %(d.hour, d.minute, d.second, \
-                 acc.get_str_alarm_time(), alarm_str)
-        row2 = ' %s %s %s' \
-               %(hum_str, tmp_str, prs_str)
+               % (time.hour, time.minute, time.second, \
+                  acc.get_str_alarm_time(), alarm_str)
+        row2 = ' %s %s %s' % (hum_str, tmp_str, prs_str)
         lcd.display_messages([row1, row2])
 
         # Turn off backlight depending on luminous intensity
-        lcd.switch_backlight(lumino.get_lux() > self.lux_sw_bl)
+        lcd.switch_backlight(values["illuminance"] > self.lux_sw_bl)
 
 
 #=========================================
 # Send Ir signals to aircon
 # Task 1. Power on aircon if it is alarm time
-# Task 2. Turn up/down aircon depending on room temparature
-# Task 3. Power off aircon if it is dark
+# Task 2. Power off aircon if it is dark
 #=========================================
 class Task_ir():
     def __init__(self):
-        self.past_lux = lumino.get_lux()
-        self.lux_sw_air = 50    # [Lux]
+        self.past_lux = sensors.get_values()["illuminance"]
+        self.lux_sw_air = 50.0    # [Lux]
 
     def execute(self):
         self.check_alarm()
@@ -119,20 +117,22 @@ class Task_ir():
             acc.write_conf()
             print_date_msg("=== Power ON! ===")
 
-    # Task 2
-    # the commands are queued in ctrl_loop()
 
     def check_lux(self):
         if acc.get_conf('lux_on') == 'off':
             return
-        if lumino.get_lux() < self.lux_sw_air and \
+
+        lumino_value = sensors.get_values()["illuminance"]
+        # 照明が切れたとき
+        if lumino_value < self.lux_sw_air and \
            self.past_lux >= self.lux_sw_air:
             ac_ctrl.enqueue('p_off')
-        elif lumino.get_lux() >= self.lux_sw_air and \
+        # 照明が付いたとき
+        elif lumino_value >= self.lux_sw_air and \
              self.past_lux < self.lux_sw_air:
             #ac_ctrl.enqueue('p_on') # issue: preset temp in AC is reset
             self.power_on_set_temp()
-        self.past_lux = lumino.get_lux()
+        self.past_lux = lumino_value
 
     def power_on_set_temp(self):
         ac_ctrl.enqueue('p_on')
@@ -169,23 +169,21 @@ def log_loop():
                 sql = "INSERT INTO " + table_name + \
                       """ (date,humidity,temperature,pressure,illuminance) 
                           VALUES(%s, %s, %s, %s, %s)"""
+                values = sensors.get_values()
                 cur.execute(sql,
-                            (datetime.datetime.today(),
-                             thermo.get_hum(),
-                             thermo.get_tmp(),
-                             thermo.get_prs(),
-                             lumino.get_lux())
+                            (values[key]
+                             for key in ["date", "humidity", "temperature", "pressure", "illuminance"])
                 )
                 con.commit()
 
     def write_log(log_file):
         with open(log_file, 'a') as f:
-            line = ','.join([now_str(),
-                             str(thermo.get_hum())[0:6],
-                             str(thermo.get_tmp())[0:6],
-                             str(thermo.get_prs())[0:6],
-                             str(lumino.get_lux())[0:6],
-                         ]) + '\n'
+            values = sensors.get_values()
+            float2str6 = lambda x: str(x)[0:6]
+            line = ','.join([now_str()] + \
+                            [float2str6(values[key])
+                             for key in ["humidity", "temperature", "pressure", "illuminance"]]
+                            ) + '\n'
             f.write(line)
 
     while True:
@@ -207,7 +205,7 @@ def ctrl_loop():
            and ac_ctrl.get_preset()['power'] == 'on':
             #print_date_msg('ctrl starts.')
             mode.update_control()
-        
+
         time.sleep(mode.dt)
 
 
@@ -233,8 +231,8 @@ class Ctrl_PID():
                  + self.ki * self.ek_sum + self.kd * dek
             uk_clipped = np.clip(int(round(uk)), 18, 30)
 
-            with open('/home/naoya/airalarm/pi.csv', 'a') as f:
-                csv_line = datetime.datetime.today().strftime('%H:%M:%S')
+            with open('/home/naoya/airalarm/pid.csv', 'a') as f:
+                csv_line = now_str(short=True)
                 csv_line +=  ', {}, {}, {}, {}, {}, {}, {}\n'.\
                              format(rk,yk,ek,uk,uk_clipped, self.ek_sum, dek)
                 f.write(csv_line)
@@ -256,31 +254,6 @@ class Ctrl_PID():
         self.ek_past = 0.0
 
         
-class Ctrl_UpDown():
-    def __init__(self):
-        self.dt = 60
-        self.delta_up = 1.0
-        self.delta_dn = 0.5
-
-    def update_control(self):
-        rk = acc.get_conf('ctrl_temp')
-        yk = thermo.get_tmp()
-        
-        if rk + self.delta_up <= yk:
-            uk = np.clip(ac_ctrl.get_preset()['target_temp'] - 1, 18, 30)
-        elif yk + self.delta_dn <= rk:
-            uk = np.clip(ac_ctrl.get_preset()['target_temp'] + 1, 18, 30)
-        else:
-            uk = np.clip(ac_ctrl.get_preset()['target_temp'], 18, 30)
-
-        if uk != ac_ctrl.get_preset()['target_temp']:
-            cmd_str = 't_' + str(uk)
-            ac_ctrl.enqueue(cmd_str)
-            print_date_msg('preset: {}'.format(ac_ctrl.get_preset()['target_temp']))
-        
-        with open('/home/naoya/airalarm/updown.csv', 'a') as f:
-            csv_line = now_str() +  ', {}, {}, {}\n'.format(rk, yk, uk)
-            f.write(csv_line)
 
 
 #=========================================
@@ -289,6 +262,7 @@ class Ctrl_UpDown():
 app = Flask(__name__)
 
 def webapi_loop():
+
     app.run(host='192.168.11.204', port=80)
 
 
@@ -344,14 +318,7 @@ def post():
 # REST API for getting values
 @app.route('/app/values', methods=['GET'])
 def get_values():
-    response = {
-        'date': datetime.datetime.today(),
-        'temp': thermo.get_tmp(),
-        'hum' : thermo.get_hum(),
-        'lux' : lumino.get_lux(),
-        'prs' : thermo.get_prs(),
-    }
-    return jsonify(response), 200
+    return jsonify(sensors.get_values()), 200
 
 
 # REST API for getting preset of aircon
@@ -435,43 +402,41 @@ if __name__ == '__main__':
     bus = smbus.SMBus(1)          # I2C bus shared by devices
 
     # Sensor Initialization
-    thermo = bme280.Thermo(bus)
-    lumino = tsl2561.Lumino(bus)
+    sensors = Sensors(bus)
 
     # LCD Initialization
     lcd = raspi_lcd.LCDController(bus, PIN_BACKLIGHT)
     lcd.initialize_display()
-    lcd.display_messages(["RaspberryPi Zero", "Air Alarm"])
+    lcd.display_messages(["RaspberryPi Zero", "   Air Alarm"])
     time.sleep(1)
-    
-    if DEBUG:
-        print_date_msg("Checking stdout...")
-        print_date_err("Checking stderr...")
 
-    # Thread for logging
-    tl = threading.Thread(target=log_loop)
-    tl.setDaemon(True)
-    tl.start()
-    
-    # Thread for Web API
-    tw = threading.Thread(target=webapi_loop)
-    tw.setDaemon(True)
-    tw.start()
+    def start_thread(target):
+        t = threading.Thread(target=target)
+        t.setDaemon(True)
+        t.start()
+        return t
 
-    # Thread for controller
-    tc = threading.Thread(target=ctrl_loop)
-    tc.setDaemon(True)
-    tc.start()
+    # 以下の処理はデーモン化されており、エラーを吐いても全体の処理は止まらない
+    # デーモンスレッドのみになったときは自動で終了する
+    tl = start_thread(log_loop)    # Thread for logging
+    tw = start_thread(webapi_loop) # Thread for Web API
+    tc = start_thread(ctrl_loop)   # Thread for controller
 
-    main_loop()
     try:
         main_loop()
     except KeyboardInterrupt:
-        if DEBUG: print_date_msg("Keyboard Interrupt")
+        print_date_msg("Catch Signal")
     finally:
+        # 以下終了処理
         acc.write_conf()
-        bus.close()
         lcd.display_messages(["Goodbye!", ""])
         time.sleep(1)
+        bus.close()
         gpio.cleanup()
+        print_date_msg("Terminal Process is Complete.")
+        print_date_err("Terminal Process is Complete.")
+        sys.exit(0)
+
+    #signal.signal(signal.SIGTERM, signal_handler)
+    #signal.signal(signal.SIGINT,  signal_handler)
 # ================== EOF ==========================
