@@ -15,13 +15,13 @@ import psycopg2   # handle PostgreSQL
 
 # Private Library
 from sensors import Sensors
+import buzzer
 import raspi_lcd
 import ac
 from copy_from_csv import get_connection
 
 # Global variables
 DEBUG = False
-PIN_BACKLIGHT = raspi_lcd.PIN_BACKLIGHT
 
 
 #=========================================
@@ -97,23 +97,34 @@ class Task_disp():
 class Task_alarm():
     def __init__(self):
         self.th_lux = 50.0    # [Lux]
+        self.is_set_buzzer = False
 
     def alarm(self):
-        conf_now = conf.get_conf()
-        if not conf_now['alarm_on']: # 機能がOFF
+        self.conf_now = conf.get_conf()
+        if not self.conf_now['alarm_on']: # 機能がOFF
             return
-        if sensors.get_values()["illuminance"] >= self.th_lux: # 電気が付いている
-            return
-        # 時間比較
-        now_m = datetime.today() - timedelta(minutes = conf_now["alarm_window"])
-        a_time = conf_now['alarm_time']
+        # 時刻を比較
+        now_m = datetime.today()
+        a_time = self.conf_now['alarm_time']
         if now_m.hour == a_time['hour'] and now_m.minute == a_time['minute']:
-            ctrl.send_ir('light', 'switch')
-            print_date_msg("=== Power ON! ===")
+            self.switch_light()
+            self.set_buzzer()
+            #print_date_msg("=== Power ON! ===")
             #conf.set_conf(alarm_on=False) # Clear flag
             #conf.write_conf()
+        else:
+            self.is_set_buzzer = False
+
+    def switch_light(self):
+        if sensors.get_values()["illuminance"] <  self.th_lux: # 電気が消えている
+            ctrl.send_ir('light', 'switch')
             time.sleep(4) # 照明が付いた状態をセンサーが取得するまで待つ
 
+    def set_buzzer(self):
+        if not self.is_set_buzzer:
+            buzzer.sound_n_sec(self.conf_now["alarm_window"])
+            self.is_set_buzzer = True
+            
     # def check_lux(self):
     #     if acc.get_conf('lux_on') == 'off':
     #         return
@@ -288,8 +299,11 @@ if __name__ == '__main__':
     # Sensor Initialization
     sensors = Sensors(bus)
 
+    # Buzzer Initializatin
+    buzzer = buzzer.Buzzer(buzzer.PIN)
+
     # LCD Initialization
-    lcd = raspi_lcd.LCDController(bus, PIN_BACKLIGHT)
+    lcd = raspi_lcd.LCDController(bus, raspi_lcd.PIN_BACKLIGHT)
     lcd.initialize_display()
     lcd.display_messages(["RaspberryPi Zero", "   Air Alarm"])
     time.sleep(1)
