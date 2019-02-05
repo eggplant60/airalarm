@@ -172,18 +172,18 @@ def log_loop():
     def insert_log(table_name):
         with get_connection() as con:
             with con.cursor() as cur:
-                sql = "INSERT INTO " + table_name + \
-                      """ (date,humidity,temperature,pressure,illuminance) 
-                          VALUES(%s, %s, %s, %s, %s)"""
+                columns = ["date",
+                           "humidity",
+                           "temperature",
+                           "pressure",
+                           "illuminance"
+                ]
+                sql = "INSERT INTO " + table_name + " (" \
+                      + ",".join(columns) + ") VALUES(%s, %s, %s, %s, %s)"
                 values = sensors.get_values()
                 cur.execute(sql,
-                            (values[key]
-                             for key in ["date",
-                                         "humidity",
-                                         "temperature",
-                                         "pressure",
-                                         "illuminance"
-                                     ]))
+                            tuple([values[key] for key in columns])
+                )
                 con.commit()
 
     def write_log(log_file):
