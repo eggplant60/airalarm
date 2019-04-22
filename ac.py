@@ -10,21 +10,23 @@ import copy
 
 DEBUG = True
 
-#=========================================
+# =========================================
 # Print a message with time
-#=========================================
+# =========================================
+
+
 def print_date_msg(msg):
     if DEBUG:
         d = datetime.datetime.today()
         print d.strftime('%Y/%m/%d %H:%M:%S') + ' [AC  ] ' + msg
 
 
-#=========================================
+# =========================================
 # Class to send signals to AC or Light
-#=========================================
+# =========================================
 class Controller():
 
-    def  __init__(self):
+    def __init__(self):
         self.command_str = '/usr/bin/irsend -#{} SEND_ONCE {} {}'
 
     def send_ir(self, target, command, n=1):
@@ -36,10 +38,9 @@ class Controller():
             print_date_msg('Error: {}'.format(cmd))
 
 
-
-#=========================================
+# =========================================
 # Class to handle configuration files
-#=========================================
+# =========================================
 class Configuration():
     def __init__(self):
         self.conf_file = '/etc/airalarm.conf'     # general configuration file
@@ -48,9 +49,10 @@ class Configuration():
                                    "hour": 7,
                                    "minute": 30
                                },
-                               "alarm_window": 30
-                           }
-        self.conf_values = self.read_conf() # Load previous configurations
+                               "alarm_window": 30,
+                               "alarm_dow": []
+                               }
+        self.conf_values = self.read_conf()  # Load previous configurations
 
     def read_conf(self):
         try:
@@ -93,7 +95,7 @@ class Configuration():
 
     # Check if args are valid
     def is_valid_values(self, dict_a):
-        if len(dict_a) != 3:
+        if len(dict_a) != len(self.default_values):
             return False
 
         if not isinstance(dict_a['alarm_on'], bool):
@@ -117,6 +119,11 @@ class Configuration():
         else:
             return False
 
+        if isinstance(dict_a['alarm_dow'], list):
+            pass
+        else:
+            return False
+
         return True
 
     # Return Example: "08:00"
@@ -125,7 +132,6 @@ class Configuration():
         hour_str = str(tmp_time['hour']).zfill(2)
         minute_str = str(tmp_time['minute']).zfill(2)
         return hour_str + ':' + minute_str
-
 
 
 if __name__ == '__main__':
@@ -142,7 +148,7 @@ if __name__ == '__main__':
     print('')
 
     print('3. Chech set_conf()')
-    print(conf.set_conf(alarm_time={'hour':11, 'minute':00}, alarm_window=5))
+    print(conf.set_conf(alarm_time={'hour': 11, 'minute': 00}, alarm_window=5))
     print(conf.get_conf())
     print('')
 
@@ -157,6 +163,6 @@ if __name__ == '__main__':
     # ctrl.enqueue('p_a')
     # ctrl.enqueue('w_high')
     # print(ac_ctrl.get_preset())
-    #ac_ctrl.dequeue_all()
+    # ac_ctrl.dequeue_all()
 
-#================== EOF =========================
+# ================== EOF =========================
